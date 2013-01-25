@@ -1,0 +1,83 @@
+Category,Super,Number
+General,Communication,1
+Staff/carer,Communication,2
+Staff/Service user,Communication,3
+Quality of written information,Communication,4
+Availability of information,Communication,5
+Staff/staff,Communication,6
+Being listened to ,Communication,7
+Other,Communication,8
+General,Environment and facilities,9
+Cleanliness/hygiene,Environment and facilities,10
+Decoration/buildings,Environment and facilities,11
+Parking/Transport,Environment and facilities,12
+Facilities,Environment and facilities,13
+Other,Environment and facilities,14
+General,Food,15
+Choice,Food,16
+Quality/quantity,Food,17
+Special Needs (culture or diet),Food,18
+Other,Food,19
+General,Physical Health Care,20
+General,Privacy and dignity,21
+Privacy issues,Privacy and dignity,22
+Gender specific issues,Privacy and dignity,23
+Dignity issues,Privacy and dignity,24
+Other,Privacy and dignity,25
+General,Involvement,26
+In own care,Involvement,27
+In medication decisions,Involvement,28
+In services,Involvement,29
+Issues being resolved,Involvement,30
+Other,Involvement,31
+General,Staff/ staff attitude,32
+Respect,Staff/ staff attitude,33
+Helpful/Caring/Friendly,Staff/ staff attitude,34
+Support,Staff/ staff attitude,35
+Other,Staff/ staff attitude,36
+General,Service quality/ outcomes,37
+Quality of care,Service quality/ outcomes,38
+Improvements in health,Service quality/ outcomes,39
+Achievement of goals,Service quality/ outcomes,40
+Other,Service quality/ outcomes,41
+General,Care/ Treatment,42
+Appointments,Care/ Treatment,43
+Medication,Care/ Treatment,44
+Therapies,Care/ Treatment,45
+Treatment programmes,Care/ Treatment,46
+Activities,Care/ Treatment,47
+Staff spend time with service users,Staff/ staff attitude,48
+Staffing levels,Staff/ staff attitude,49
+Other,Care/ Treatment,50
+General,Staff/ staff attitude,51
+Continuity of staff  ,Staff/ staff attitude,52
+Care Programme Approach,Care/ Treatment,53
+Doctor,Staff/ staff attitude,54
+Nurse,Staff/ staff attitude,55
+Other staff,Staff/ staff attitude,56
+General,Access to services,57
+Access to services/referrals,Access to services,58
+Provision/availability,Access to services,59
+Location ,Access to services,60
+Length of waiting time,Access to services,61
+Other,Access to services,62
+General,Healthcare records,63
+Healthcare records ,Healthcare records,64
+Other,Healthcare records,65
+General,Smoking,66
+General,Leave,67
+Leave- off site,Leave,68
+Leave- on site,Leave,69
+Other,Leave,70
+General,Safety,71
+Violence/assaults,Safety,72
+Bullying/harassment,Safety,73
+Safeguarding issues,Safety,74
+Environment,Safety,75
+Other,Safety,76
+Dentistry,Physical Health Care,77
+General,MHA,78
+Advice/ support,Service quality/ outcomes,79
+General,Equality and diversity,80
+Follow Up,Access to services,81
+Socialising with service users,Care/ Treatment,82
