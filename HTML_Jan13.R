@@ -498,6 +498,33 @@ mycomments=function(x){
   } # matches with if () error handling 
 } # matches with function
 
+##########################################
+##### response rate function #############
+##########################################
+
+myResponse = function() {
+
+    responseTab = data.frame("TeamC" = as.numeric(teamnames), "Responses" = teamnumbers)
+
+    finalTab = merge(responseTab, subset(counts, Time==Quarter), by = "TeamC", all.x=TRUE)[,c("TeamC", "TeamN", "Responses", "Contacts")]
+
+    finalTab$Percent = round(finalTab$Responses / finalTab$Contacts * 100, 1)
+
+    finalTab$TeamN = sapply(as.numeric(teamnames), function(x) as.character(subset(mydatafirst, Time==Quarter)$TeamN
+                                                                        [tail(which(x==subset(mydatafirst, Time==Quarter)$TeamC), 1)]))
+    
+    finalTab$Percent[finalTab$Percent>100] = 100
+    
+    finalTab = finalTab[order(finalTab$Percent, decreasing = TRUE),]
+    
+    finalTab[4:5][is.na(finalTab[4:5])] = "NK"
+    
+    print(xtable(finalTab[-1]), type="html", append=TRUE, file=currentPath, include.rownames = FALSE)
+    
+    return(finalTab)
+    
+}
+
 ##################################################
 ################## SUMMARY #######################
 ##################################################
@@ -589,13 +616,13 @@ myCat('<div id="content-left">')
     
   } 
 
-  myCat("<h3> Improve one thing </h3>")
+  myCat("<h2> Improve one thing </h2>")
 
   mytable(1) 
 
   myCat("<br>")
 
-  myCat("<h3> Best thing </h3>")
+  myCat("<h2> Best thing </h2>")
 
   mytable(2)
 
@@ -605,7 +632,7 @@ myCat("</div>")
 
 myCat('<div id="content-right">')
 
-  myCat('<h3>Navigation</h3>')
+  myCat('<h2>Navigation</h2>')
     
   myCat('<ul>')
 
@@ -642,6 +669,8 @@ mydata=subset(mydatafirst, Local==0)
 Subset.P=subset(mydatafirst, Time==Quarter&Local==0)
 
 Subset.B=subset(mydatafirst, Local==0)
+
+myCat("<html>")
 
 myCat("<head>")
 
@@ -681,7 +710,8 @@ myCat('<div id="content-left">')
 
   myCat(c("<p>In local services division we received ", length(subset(mydata, Time==Quarter)$Service),
            " responses. Of these ", table(subset(mydata, Time==Quarter)$SU)[2],
-           " were from carers. This is a response rate of XX.</p>"))
+           " were from carers. This is a response rate of ",
+          round(length(subset(mydata, Time==Quarter)$Service) / sum(subset(counts, Time==Quarter & Division==0)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
 
   myCat(c("<p>This quarter the division had a service quality rating of ",
            round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
@@ -720,13 +750,13 @@ myCat('<div id="content-left">')
   
   } 
 
-  myCat("<h3> Improve one thing </h3>")
+  myCat("<h2> Improve one thing </h2>")
   
   mytable(1) 
 
   myCat("<br>")
 
-  myCat("<h3> Best thing </h3>")
+  myCat("<h2> Best thing </h2>")
 
   mytable(2)
 
@@ -772,94 +802,204 @@ for (d in c(2, 7)) {
 
   stack(Subset.P) 
 
-  if (file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
+  if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
                        ".png", sep=""))){ 
    
     myCat("<html>")
+      
+    myCat("<head>")
+    
+      myCat(c("<title> ", directorate[d], " </title>"))
+      
+      myCat('<link href="report.css" rel="stylesheet" type="text/css" />')
+      
+      myCat("</head>")
+      
+    myCat("<body>")
+      
+    myCat('<div id="report">') # this tag ends right at the end
+      
+    myCat('<div id="header">')
+      
+      myCat('<a href="#"><img src="logo.png" alt="Positive... about change" /></a>')
+      
+      myCat('<p class="title">')
+      
+      myCat('<strong>Service User and Carer Experience Report</strong><br />')
+      
+      myCat('<em>January 2013</em><br />')
+      
+      myCat('<span>V1.2</span></p>')
+      
+      myCat('</div>')
+      
+    myCat('<div id="breadcrumb">') # automate
+      
+      myCat(c('<a href="index.html">Trust summary</a> &rsaquo; <a href="local.html">Local services</a> &rsaquo;', directorate[d]))
+    
+    myCat('</div>')
+      
+      myCat(c("<h1> ", directorate[d], " </h1>"))
+      
+      myCat('<div id="content-left">')
 
-    myCat(c("<h2> ", directorate[d], " </h2>"))
+        mydata$sumNA=as.numeric(!is.na(mydata$Service))+ as.numeric(!is.na(mydata$Listening)) +
+          as.numeric(!is.na(mydata$Communication))+ as.numeric(!is.na(mydata$Respect))+ as.numeric(!is.na(mydata$InvCare))   
   
-    mydata$sumNA=as.numeric(!is.na(mydata$Service))+ as.numeric(!is.na(mydata$Listening))+ as.numeric(!is.na(mydata$Communication))+ as.numeric(!is.na(mydata$Respect))+ as.numeric(!is.na(mydata$InvCare))   
+        mydata=subset(mydata, sumNA>0)
+
+        help=table(mydata$TeamC, mydata$Time)[,ncol(table(mydata$TeamC, mydata$Time))]
+
+        teamnames=names(which(help>2))
+    
+        teamnumbers=help[which(help>2)]
+
+        mydata2=subset(mydata, TeamC %in% teamnames)  
+
+        myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydatafirst, Time==Quarter&Directorate==d)$Service),
+                " responses. Of these ", table(factor(subset(mydatafirst, Time==Quarter&Directorate==d)$SU, levels=0:1))[2],
+                " were from carers. This is a response rate of ", 
+                round(length(subset(mydata, Time==Quarter)$Service) / sum(subset(counts, Time==Quarter & Directorate==d)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
+
+        myCat(c("<p>This quarter the directorate had a service quality rating of ",
+                round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
+                ". This compares with ", round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
+                " in the previous quarter and ",
+                round(mean(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20),
+                "% in the previous four quarters.</p>"))
+
+        myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
+                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) -
+                                                         sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/
+                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), "%.</p>"))
   
-    mydata=subset(mydata, sumNA>0)
+        myCat(c("<img src= ", graph, ".png", " width=500</a>"))
 
-    help=table(mydata$TeamC, mydata$Time)[,ncol(table(mydata$TeamC, mydata$Time))]
+        mybar(PlaceN="Directorate", PlaceC=d, GraphN=1, type="main")
 
-    teamnames=names(which(help>2))
-
-    mydata2=subset(mydata, TeamC %in% teamnames)  
-
-    myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydatafirst, Time==Quarter&Directorate==d)$Service), " responses. Of these ", table(factor(subset(mydata, Time==Quarter)$SU, levels=0:1))[2], " were from carers. This is a response rate of XX.</p>"))
-
-    myCat(c("<p>This quarter the directorate had a service quality rating of ", round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20), ". This compares with ", round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20), " in the previous quarter and ", round(mean(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20), "% in the previous four quarters.</p>"))
-
-    myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) - sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), "%.</p>"))
+        if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
   
-    myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
-
-    mybar(PlaceN="Directorate", PlaceC=d, GraphN=1, type="main")
-
-    if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
+          myCat(c("<img src= ", graph, ".png", " width=500</a>"))
   
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
-  
-    } 
+        } 
 
-    mybar(PlaceN="Directorate", PlaceC=d, GraphN=2, type="main")
+        mybar(PlaceN="Directorate", PlaceC=d, GraphN=2, type="main")
 
-    if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
+        if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
                      ".png", sep=""))){ 
   
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
+          myCat(c("<img src= ", graph, ".png", " width=500</a>"))
   
-    } 
+        } 
 
-    myCat("<h3> Improve one thing individual comments </h3><br>")
+        myCat("<h2> Improve one thing individual comments </h2>")
 
-    mycomments(1) 
+        mycomments(1) 
   
-    myCat("<h3> Best thing individual comments </h3>")
+        myCat("<h2> Best thing individual comments </h3>")
 
-    mycomments(2) 
+        mycomments(2) 
   
-    myCat("<h3> Improve one thing summary </h3>")
+        myCat("<h2> Improve one thing summary </h2>")
    
-    mytable(1) 
+        mytable(1) 
 
-    myCat("<h3> Best thing summary </h3>")
+        myCat("<h2> Best thing summary </h2>")
+    
+        mytable(2) 
 
-    mytable(2) 
+        myCat("<br>")
+    
+        dirResponseTable = myResponse()
+    
+      myCat("</div")
+    
+      myCat('<div id="content-right">')
+    
+        myCat('<h3>Navigation</h3>')
+    
+        myCat('<ul>')
+    
+          for (team in teamnames) {
+        
+            myCat(c("<li><a href=", team, ".html>", as.character(subset(mydatafirst, Time==Quarter)$TeamN
+                                      [tail(which(team==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), "</a><br></li>"))
+        
+          }
+    
+        myCat('</ul>')
+    
+      myCat("</div>")
+    
+      myCat("</div>") # report
+    
+      myCat("</body>")
+    
+      myCat("</html>")
 
-    for (t in teamnames) {
-  
-      myCat(c("<a href=", t, ".html>", as.character(subset(mydatafirst, Time==Quarter)$TeamN
-                [tail(which(t==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), "</a><br>"))
-  
-    }
+    ##############################################
+    ################## team ######################
+    ##############################################
+    
+  for(team in as.numeric(names(table(droplevels(mydata2$TeamC))))) { 
+    
+    currentPath = file.path(getwd(), "temp", paste0(team, ".html"), fsep = .Platform$file.sep)
+    
+    myCat("<html>")
+    
+    myCat("<head>")
+    
+      myCat(c("<title> ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst,
+                                                    Time==Quarter)$TeamC), 1)]), " </title>"))
+        
+      myCat('<link href="report.css" rel="stylesheet" type="text/css" />')
+    
+    myCat("</head>")
+    
+    myCat("<body>")
+    
+    myCat('<div id="report">') # this tag ends right at the end
+    
+    myCat('<div id="header">')
+    
+      myCat('<a href="#"><img src="logo.png" alt="Positive... about change" /></a>')
+    
+      myCat('<p class="title">')
+    
+      myCat('<strong>Service User and Carer Experience Report</strong><br />')
+    
+      myCat('<em>January 2013</em><br />')
+    
+      myCat('<span>V1.2</span></p>')
+    
+    myCat('</div>')
+    
+    myCat('<div id="breadcrumb">')
+    
+      myCat(c('<a href="index.html">Trust summary</a>&rsaquo; <a href="local.html">Local services</a>
+            &rsaquo; <a href="', gsub("\\s","_", directorate[d]), '.html">', directorate[d],'</a> &rsaquo; ',
+            as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst,
+                                                                                          Time==Quarter)$TeamC), 1)])))
+    
+    myCat('</div>')
+    
+    myCat(c("<h1> ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst,
+                                        Time==Quarter)$TeamC), 1)]), " </h1>"))
+    
+    myCat('<div id="content-left">')
 
-    myCat("</html>")
-
-    for (t in as.numeric(names(table(droplevels(mydata2$TeamC))))) { 
-
-      Subset.P=subset(mydata, Time==Quarter&TeamC==t)
+      Subset.P=subset(mydata, Time==Quarter&TeamC==team)
  
-      Subset.B=subset(mydata, TeamC==t)  
+      Subset.B=subset(mydata, TeamC==team)
 
       stack(Subset.P) 
 
-      currentPath = file.path(getwd(), "temp", paste0(t, ".html"), fsep = .Platform$file.sep)
-    
-      myCat("<html>")
-   
-      myCat(c("<a href=", gsub("\\s","_", directorate[d]), ".html>", t, "</a><br>"))
-
-      myCat(c("<h1> ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(t==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), " </h1>"))
-
-      myCat(c("<p>In ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(t==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), " we received ", length(subset(mydatafirst, TeamC==t&Time==Quarter)$Service), " responses.  This is a response rate of XX. Of these ", length(subset(mydatafirst, TeamC==t&Time==Quarter&SU==1)$Service), " were from carers.</p>"))
+      myCat(c("<p>In ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), " we received ", length(subset(mydatafirst, TeamC==team&Time==Quarter)$Service), " responses.  This is a response rate of ", dirResponseTable$Percent[dirResponseTable$TeamC==team], " %. 
+              Of these ", length(subset(mydatafirst, TeamC==team&Time==Quarter&SU==1)$Service), " were from carers.</p>"))
 
       myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
 
-      mybar(PlaceN="TeamC", PlaceC=t, GraphN=1, type="main")
+      mybar(PlaceN="TeamC", PlaceC=team, GraphN=1, type="main")
 
     if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
      
@@ -867,7 +1007,7 @@ for (d in c(2, 7)) {
      
     } 
    
-    mybar(PlaceN="TeamC", PlaceC=t, GraphN=2, type="main")
+    mybar(PlaceN="TeamC", PlaceC=team, GraphN=2, type="main")
    
     if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
      
@@ -894,10 +1034,33 @@ for (d in c(2, 7)) {
       myCat(c(vecprint, "<br>"))
     
     } 
-   
+      
+    myCat("</div")
+      
+    myCat('<div id="content-right">')
+      
+      myCat('<h3>Navigation</h3>')
+      
+      myCat('<ul>')
+      
+      for (team in teamnames) {
+          
+          myCat(c("<li><a href=", team, ".html>", as.character(subset(mydatafirst, Time==Quarter)$TeamN
+                                                               [tail(which(team==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), "</a><br></li>"))
+          
+      }
+      
+    myCat('</ul>')
+      
+    myCat("</div>")
+      
+    myCat("</div>") # report
+      
+    myCat("</body>")
+      
     myCat("</html>")
    
-  } # matches with for (t in...)
+  } # matches with for (team in...)
 
 } # matches with if.exists(d)
   
