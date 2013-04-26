@@ -1,26 +1,59 @@
 
+# 1.    Re-do breadcrumb trails
+# 3.	Also some totals have crept into the columns (i.e. not percentages)
+# 4.	Response rates and NPS sometimes Inf or NaN
+# 5.	HMP labels wrong 
+# 6. Fix multiple table entries
+
 rm(list=ls()) 
 
-setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\",
-             "~/Dropbox/R-files/HTML")) 
+setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\Patient_Survey\\",
+         "~/Dropbox/R-files/Patient_Survey")) 
 
-exampletable=read.csv("Categories_comments.csv", stringsAsFactors =FALSE) 
+exampletable=read.csv("Categories_comments.csv", stringsAsFactors =FALSE)
 
 mydatafirst = read.csv("FINAL-DATA.csv", na.strings=c("NA", "", 99, 88), stringsAsFactors=FALSE)
 
 counts=read.csv("Counts.csv")
 
-Quarter=15 ### Mark current quarter here 
+setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\",
+             "~/Dropbox/R-files/HTML")) 
+
+###############################
+### FOR TESTING - REMOVE !!! ##
+###############################
+
+set.seed(111179)
+
+mydatafirst$PO = mydatafirst$Improve[sample(1:nrow(mydatafirst), nrow(mydatafirst))]
+
+mydatafirst$PALS = mydatafirst$Best[sample(1:nrow(mydatafirst), nrow(mydatafirst))]
+
+###############################
+### END OF REMOVE  !!! ########
+###############################
+
+counts=counts[!duplicated(counts[, c("TeamC", "Time")]),]
+
+counts$Contacts = as.numeric(as.character(counts$Contacts))
+
+Quarter <<- 16 ### Mark current quarter here 
 
 if(max(mydatafirst$Time, na.rm=TRUE)> Quarter) stop("Quarter value wrong") 
 
-mydatafirst$TeamN=gsub("&", "and", mydatafirst$TeamN) 
+mydatafirst$TeamN=gsub("&", "and", mydatafirst$TeamN)
 
-mydatafirst$Directorate[mydatafirst$Directorate==1 & !is.na(mydatafirst$Directorate)]=2 
+mydatafirst$Directorate[mydatafirst$Directorate==1 & !is.na(mydatafirst$Directorate)] = 2 
+
+counts$Directorate[counts$Directorate==1 & !is.na(counts$Directorate)] = 2 
 
 mydatafirst$Imp1 = as.numeric(as.character(mydatafirst$Imp1))
 
 mydatafirst$Best1 = as.numeric(as.character(mydatafirst$Best1))
+
+mydatafirst$Imp1[!mydatafirst$Imp1 %in% exampletable$Number] = NA
+
+mydatafirst$Best1[!mydatafirst$Best1 %in% exampletable$Number] = NA
   
 library(tm) 
 library(wordcloud) 
@@ -30,13 +63,17 @@ library(reshape)
 library(scales) 
 library(xtable)
   
-directorate=c("Adult mental health City", "Adult mental health", "Arnold Lodge", "CAMHS", "Low secure + CFS", "Learning disability", "Mental health services for older people", "High secure LD", "High secure MH", "High secure PD", "Peaks", "High secure women's","Substance misuse", "Psychological therapy", "Wathwood", "Offender health", rep(NA, 8), "Bassetlaw", "Mansfield and Ashfield", "Newark and Sherwood", "Nottingham North and East", "Nottingham West", "Rushcliffe", "Specialist services") 
+directorate=c("Adult mental health City", "Adult mental health", "Arnold Lodge", "CAMHS", "Low secure + CFS",
+              "Learning disability", "Mental health services for older people", "High secure LD", "High secure MH",
+              "High secure PD", "Peaks", "High secure women's","Substance misuse", "Psychological therapy", "Wathwood",
+              "Offender health", rep(NA, 8), "Bassetlaw", "Mansfield and Ashfield", "Newark and Sherwood",
+              "Nottingham North and East", "Nottingham West", "Rushcliffe", "Specialist services") 
 
 lappend <- function(lst, obj) {  
   
   lst[[length(lst)+1]] <- obj ; return(lst) }  
   
-Year=floor(Quarter/4) 
+Year=floor(Quarter/4)
 
 remainYear=Quarter%%4 
 
@@ -69,21 +106,21 @@ for (x in 1:remainYear){
   
 } 
 
-mydatafirst$Time=factor(mydatafirst$Time) 
+# mydatafirst$Time=factor(mydatafirst$Time) 
 
 mydatafirst[,8:23][mydatafirst[,8:23]>5]=NA 
 
 mydatafirst[,8:23][mydatafirst[,8:23]==0]=NA 
 
-mydatafirst[,"Promoter"][mydatafirst[,"Promoter"]>5]=NA 
+mydatafirst[,"Promoter"][mydatafirst[,"Promoter"]>5]=NA
+
+mydatafirst$SW = as.numeric(mydatafirst$SW)
 
 graph<<-1 
 
-d=0 
-
 mydatafirst$Staff=apply(mydatafirst[which(names(mydatafirst)=="Doctor"): which(names(mydatafirst )=="Therapist")], 1, mean, na.rm=TRUE) 
 
-mydatafirst$TeamC=factor(mydatafirst$TeamC) 
+# mydatafirst$TeamC=factor(mydatafirst$TeamC) 
   
 mainlist=c("Service quality", "Listening", "Communication", "Respect", "Involved in care",
            "Involved in medication", "Feeling safe", "Achieve goals", "Physical health",
@@ -133,9 +170,13 @@ myCat = function(x){
 ###### stack function ##### 
 ########################### 
 
-stack=function(m, Trust=0){ 
-
-  graph <<-graph+1 
+stack=function(PlaceN, PlaceC, myLabels, Trust = 0){
+    
+# PlaceC = c(4, 6, 13, 14) ; PlaceN = "Directorate"; myLabels=mainlist; Trust = 1
+     
+  graph <<- graph + 1
+  
+  m=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% Quarter,]
   
   if(Trust==1){
     
@@ -150,28 +191,28 @@ stack=function(m, Trust=0){
   
   }
   
-  if(sum(missnum>2)<4) return() 
+  if(sum(missnum>2)<4) return(FALSE)
   
-    mygraph=melt(lapply(names(missnum[missnum>2]), function(x) prop.table(table(m[,which(names(m)==x)]))*100)) 
+  png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
+        width = 658, units = "px", pointsize=12)
   
-    mygraph$L1=factor(mygraph$L1, labels=c(names(missnum[missnum>2]))) 
+  mygraph=melt(lapply(names(missnum[missnum>2]), function(x) prop.table(table(m[,which(names(m)==x)]))*100)) 
   
-    if(d==16){ 
-      labels=offendermain   
-    } else  labels=mainlist 
-
-    if(d>16){ 
-      labels=CHPmain 
-    } 
+  mygraph$L1=factor(mygraph$L1, labels=c(names(missnum[missnum>2]))) 
   
-  ggplot(mygraph, aes(L1, value, fill=factor(Var.1), order = -Var.1)) + geom_bar(position="fill", stat="identity") +
-    ylab("Proportion responding") + opts(axis.text.x=theme_text(angle=90, hjust=1)) + xlab("Question") +
-    scale_fill_manual(values=rainbow(5), "Response", limits=c(1:5), breaks=c(5:1),
+  print(  
+  
+    ggplot(mygraph, aes(L1, value, fill=factor(Var.1), order = -Var.1)) + geom_bar(position="fill", stat="identity") +
+      ylab("Proportion responding") + opts(axis.text.x=theme_text(angle=90, hjust=1)) + xlab("Question") +
+      scale_fill_manual(values=rainbow(5), "Response", limits=c(1:5), breaks=c(5:1),
                       labels=c("Excellent", "Good", "Fair", "Poor", "Very poor")) +
-    scale_y_continuous(labels =percent_format()) + guides(fill = guide_legend(reverse = TRUE)) +
-    scale_x_discrete(labels=labels[missnum>2]) 
+      scale_y_continuous(labels =percent_format()) + guides(fill = guide_legend(reverse = TRUE)) +
+      scale_x_discrete(labels=myLabels[missnum>2]) 
+  )
   
-  ggsave(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""), width=7, height=5, units="in") 
+    dev.off()
+
+  return(TRUE)
   
 } # stack function  
 
@@ -179,11 +220,11 @@ stack=function(m, Trust=0){
 ######## mybar ##################
 #################################
   
-mybar=function(Time=1:Quarter, PlaceN, PlaceC, GraphN= 1, type=NULL, custom=NULL){
-
-  graph <<-graph+1
+mybar=function(PlaceN, PlaceC, GraphN, type){
+    
+  graph <<- graph+1
   
-  mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% Time,]
+  mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% 1:Quarter,]
   
   ybar=sapply(1:length(barnums), function(i) apply(subset(mydata, Time %in%
               barnums[[i]])[,unlist(barvars[[type]][GraphN])], 2, mean, na.rm=TRUE))
@@ -208,7 +249,7 @@ mybar=function(Time=1:Quarter, PlaceN, PlaceC, GraphN= 1, type=NULL, custom=NULL
   if(class(ybar)=="matrix"){
   
     png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
-      width = 1000, res=100, pointsize=12, height = 700)
+      width = 658, units = "px", pointsize=12)
   
     par(mar=c(8, 4, 4, 2) + 0.1)
   
@@ -217,9 +258,9 @@ mybar=function(Time=1:Quarter, PlaceN, PlaceC, GraphN= 1, type=NULL, custom=NULL
     axis(2, at = 1:5) 
   
     legend("top", legend=unlist(legvars[[type]][GraphN])[namedrop], fill=rainbow(nrow(ybar)), bty="n", ncol = 3 )
-  
-    mtext(longvec, side=1, at=sapply(1:length(ybar), function(x) (nrow(ybar)+1)*x-(nrow(ybar))/2), line=5, outer=FALSE)
-
+    
+    mtext(longvec, side=1, at=sapply(1:ncol(ybar), function(x) (nrow(ybar)+1)*x-(nrow(ybar))/2), line=5, outer=FALSE)
+    
     mtext("Number of responses received in each period", side=1, line=3, outer=FALSE)
   
     invisible(dev.off())
@@ -234,50 +275,40 @@ mybar=function(Time=1:Quarter, PlaceN, PlaceC, GraphN= 1, type=NULL, custom=NULL
 
  # x is local or forensic, y is Improve/ best 
 
-mycloud=function(x, y, Title){  
+mycloud=function(PlaceN, PlaceC, type, cloudname){  
+        
+  mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% (Quarter-3):Quarter,]
   
   pal <- brewer.pal(8,"Dark2") 
   
-  graph <<- graph + 1 
-    
-  ##########################################
+  graph <<- graph + 1
+  
+  ########################################## 
   ######### while testing- delete !!!! #####
   ##########################################
   
   png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
-      width = 1000, res=100, pointsize=12, height = 700)
-  
+      width = 658, units = "px", pointsize=12)
+
   plot(runif(10))
-  
+
   text(6, .5, "Wordcloud in final version!", cex=3)
-  
+
   waste = dev.off()
-  
+
   return()
   
-  ##########################################
-  ######### end of delete !!!! #############
-  ##########################################
-    
+  ######################################### 
+  ######### end of delete !!!!!!!!!!! #####
+  #########################################
+
   if(!file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
   
-    mydata=subset(mydatafirst, Local %in% x & Time %in% (Quarter-3):Quarter) 
-  
-    png(file=paste(file.path(getwd(), "temp", paste0(x,y, collapse=""), fsep = .Platform$file.sep), ".png", sep=""),
-        width = 1000, res=100, pointsize=12, height = 700)
+      png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
+          width = 658, units = "px", pointsize=12)
     
-    if(y==1){ 
+    mycorpus=Corpus(DataframeSource(data.frame(mydata[-is.na(mydata[,type]), type]))) 
     
-      mycorpus=Corpus(DataframeSource(data.frame(mydata[-is.na(mydata$Improve),30]))) 
-    
-    } 
-  
-    if(y==2){ 
-    
-      mycorpus=Corpus(DataframeSource(data.frame(mydata[-is.na(mydata$Best),33]))) 
-    
-    } 
-  
     mycorpus <- tm_map(mycorpus, removePunctuation) 
     mycorpus <- tm_map(mycorpus, tolower) 
     mycorpus <- tm_map(mycorpus, function(m) removeWords(m, c(stopwords("english"), "none", "rampton", "ive", "dont", "etc"))) 
@@ -290,7 +321,7 @@ mycloud=function(x, y, Title){
     wordcloud(d$word,d$freq, scale=c(2.5,.5), max.words=250, random.order=TRUE,rot.per=.15,
             colors=pal, vfont=c("sans serif","plain")) 
   
-    mtext(paste(Title, "-", ifelse(y==1, "Improve one thing", "Best thing")), side=3, line=0, outer=FALSE) 
+    mtext(paste(cloudname, "-", ifelse(type=="Improve", "Improve one thing", "Best thing")), side=3, line=0, outer=FALSE) 
   
     mtext("This word cloud represents frequency of words within the Service User and Carer ",
         side=1, line=0, outer=FALSE) 
@@ -316,12 +347,11 @@ mycloud=function(x, y, Title){
       
     } 
     
-    mtext(paste("Experience Survey between", finaltext, "based on", ifelse(y==1,
-            length(mydata$Improve[!is.na(mydata$Improve)]),
-            length(mydata$Best[!is.na(mydata$Best)])), "comments"),
-        side=1, line=1, outer=FALSE) 
+    mtext(paste("Experience Survey between", finaltext, "based on",
+                length(mydata[,type][!is.na(mydata[,type])]), "comments"),
+        side=1, line=1, outer=FALSE)
   
-    invisible(dev.off())
+    dev.off()
 
   } # matches with if file.exists
   
@@ -331,98 +361,98 @@ mycloud=function(x, y, Title){
 ######## mytable function #############  
 ####################################### 
 
-mytable=function(x){ 
-
-  if(x==1) { 
-
-    resultstable=prop.table(with(subset(mydata, Time==Quarter), table(factor(Imp1, levels=1:83)))
-                         [-length(with(subset(mydata, Time==Quarter), table(factor(Imp1, levels=1:83))))])*100
- 
+mytable=function(PlaceN, PlaceC, x){
+    
+    #  PlaceN = "Local" ; PlaceC = 0:2 ; x = 1
+    
+    mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC,]
+    
+    if(x==1) { 
+        
+        resultstable=prop.table(with(subset(mydata, Time==Quarter),
+                                     table(factor(Imp1, levels = exampletable$Number)))) * 100
+        
+        addcomments1=sum(with(subset(mydata, Time==Quarter), table(factor(Imp1, levels=exampletable$Number))))
+        
+        addcomments2=sum(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Imp1, levels=exampletable$Number))))
+        
+        lasttable=round(prop.table(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)),
+                                        table(factor(Imp1, levels=exampletable$Number)))), 3)*100  
+        
+    }
+    
+    if(x==2){
+        
+        resultstable=prop.table(with(subset(mydata, Time==Quarter),
+                                     table(factor(Best1, levels = exampletable$Number)))) * 100
+        
+        addcomments1=sum(with(subset(mydata, Time==Quarter), table(factor(Best1, levels=exampletable$Number))))
+        
+        addcomments2=sum(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Best1, levels=exampletable$Number))))
+        
+        lasttable=round(prop.table(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)),
+                                        table(factor(Best1, levels=exampletable$Number)))), 3)*100
+        
+    }
+    
     finaltable=cbind(round(resultstable, 1), exampletable)
- 
-    names(finaltable)[1]="resultstable"
- 
-    sumtable=tapply(finaltable$resultstable, finaltable$Super, sum)
- 
-    finaltable$Sumcategory=NA  
-
-    finaltable$lasttable=round(prop.table(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)),
-                                            table(factor(Imp1, levels=1:83)))
-                                       [-length(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)),
-                                                     table(factor(Imp1, levels=1:83))))]), 3)*100  
-
-    addcomments1=sum(with(subset(mydata, Time==Quarter), table(factor(Imp1, levels=1:83)))
-                  [-length(with(subset(mydata, Time==Quarter), table(factor(Imp1, levels=1:83))))]) 
-
-    addcomments2=sum(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Imp1, levels=1:83)))
-                  [-length(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Imp1, levels=1:83))))]) 
-
-    } 
-
-  if(x==2) { 
-
-    resultstable=prop.table(with(subset(mydata, Time==Quarter), table(factor(Best1, levels=1:83)))
-                         [-length(with(subset(mydata, Time==Quarter), table(factor(Best1, levels=1:83))))])*100
- 
-    finaltable=cbind(round(resultstable, 1), exampletable)
- 
-    names(finaltable)[1]="resultstable"
- 
-    sumtable=tapply(finaltable$resultstable, finaltable$Super, sum)
- 
-    finaltable$Sumcategory=NA  
-
-    finaltable$lasttable=round(prop.table(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Best1, levels=1:83)))[-length(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Best1, levels=1:83))))]), 3)*100  
-
-    addcomments1=sum(with(subset(mydata, Time==Quarter), table(factor(Best1, levels=1:83)))[-length(with(subset(mydata, Time==Quarter), table(factor(Best1, levels=1:83))))]) 
-
-    addcomments2=sum(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Best1, levels=1:83)))[-length(with(subset(mydata, Time %in% (Quarter-4):(Quarter-1)), table(factor(Best1, levels=1:83))))]) 
-
-  }
-
- sumlast=tapply(finaltable$lasttable, finaltable$Super, sum)  
-
- for (i in 1:length(sumtable)) {  
- 
-     finaltable$Sumcategory[finaltable$Super==names(sumtable[i])]=sumtable[i]  
-
- }  
-
- for (i in 1:length(sumtable)) {  
- 
-     finaltable$lastcategory[finaltable$Super==names(sumtable[i])]=sumlast[i]  
-
- }  
-
-  finaltable2=finaltable[with(finaltable, order(-Sumcategory, -resultstable)),]  
-
-  realtable=matrix(data=NA, nrow=0, ncol=7) 
-
-  for (i in unique(finaltable2[,3])){  
-
-    realtable=rbind(realtable, matrix(c(NA, "Total", i, NA, finaltable2[head(which(finaltable2[3]==i), 1),5], NA, finaltable2[head(which(finaltable2[3]==i), 1),7]), nrow=1))  
-
-    realtable=rbind(realtable, as.matrix(finaltable2[which(finaltable2[3]==i),]))  
-
-    names(realtable)=names(finaltable2) 
-
-  }
-
-  temptable=realtable[,c(3,2,5,1,7,6)] 
-
-  tempvec=as.numeric(as.character(temptable[,4]))>0 
-  
-  tempvec[is.na(tempvec)]=TRUE 
-  
-  finaltable3=temptable[tempvec,] 
-  
-  finaltable3=data.frame(finaltable3[finaltable3[,3]>0,]) 
-  
-  finaltable3=finaltable3[!is.na(finaltable3$Super),] 
-
-  names(finaltable3)=c("Main category", "Category", "Total this quarter %", "Category % this quarter", "Total last year %",
-                      "Category % last year")  
-
+    
+    names(finaltable)[2]="resultstable"
+    
+    sumtable=tapply(as.numeric(finaltable$resultstable), finaltable$Super, sum)
+    
+    finaltable$Sumcategory=NA
+    
+    finaltable$lasttable = lasttable
+    
+    sumlast=tapply(finaltable$lasttable, finaltable$Super, sum)  
+    
+    for (i in 1:length(sumtable)) {  
+        
+        finaltable$Sumcategory[finaltable$Super==names(sumtable[i])]=sumtable[i]  
+        
+    }  
+    
+    for (i in 1:length(sumtable)) {  
+        
+        finaltable$lastcategory[finaltable$Super==names(sumtable[i])]=sumlast[i]  
+        
+    }  
+    
+    finaltable2=finaltable[with(finaltable, order(-Sumcategory, -as.numeric(resultstable))),]  
+    
+    realtable=matrix(data=NA, nrow=0, ncol=7) 
+    
+    for (i in unique(finaltable2[,4])){
+        
+        realtable=rbind(realtable, matrix(c(NA, "Total", i, NA, finaltable2[head(which(finaltable2[4]==i), 1),6],
+                                            NA, finaltable2[head(which(finaltable2[4]==i), 1),8]), nrow=1))  
+        
+        realtable=rbind(realtable, as.matrix(finaltable2[which(finaltable2[4]==i),-1]))
+        
+    }
+    
+    temptable=realtable[,c(3,2,5,1,7,6)] 
+    
+    tempvec=as.numeric(as.character(temptable[,4]))>0 
+    
+    tempvec[is.na(tempvec)]=TRUE 
+    
+    finaltable3=temptable[tempvec,] 
+    
+    finaltable3=data.frame(finaltable3[finaltable3[,4]>0 | is.na(finaltable3[,4]),]) 
+    
+    finaltable3=finaltable3[!is.na(finaltable3$Super),] 
+    
+    finaltable3$Sumcategory[finaltable3$Category!="Total"] = NA
+    
+    finaltable3$lastcategory[finaltable3$Category!="Total"] = NA
+    
+    # finaltable3 = finaltable2[,c(4, 3, 6, 2, 8, 7)]
+    
+    names(finaltable3)=c("Main category", "Category", "Total this quarter %", "Category % this quarter", "Total last year %",
+                         "Category % last year")  
+    
  if(x==1){ 
 
    myCat(paste("<p>The table below shows the percentage of responses from the comments received to the question
@@ -439,7 +469,7 @@ mytable=function(x){
 
   } # if x is 2
 
-  print(xtable(finaltable3), type="html", append=TRUE, file=currentPath) 
+  print(xtable(finaltable3), type="html", append=TRUE, file=currentPath, include.rownames=FALSE) 
 
   myCat("</br>") 
 
@@ -449,23 +479,34 @@ mytable=function(x){
 ######## mycomments function ##########  
 ####################################### 
 
-mycomments=function(x){ 
+mycomments=function(PlaceN, PlaceC, type){ 
+    
+    # PlaceN = "Directorate"
+    # PlaceC = 2
+    # type = 1
+    
+  mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC,]
 
-  if(x==1){  
+  if(type==1){  
 
     commentstable=subset(mydata, Time==Quarter)[,c("Improve", "Imp1")]
     
     names(commentstable)=c("Improve", "Imp1")
     
+    # and miscellaneous comments
+    
+    miscprint = subset(mydata, Time == Quarter)$Improve[is.na(subset(mydata, Time == Quarter)$Imp1)]
+    
   }  
 
-  if(x==2){  
+  if(type==2){  
 
-    commentstable=data.frame(as.character(subset(mydata, Time==Quarter)$Best),
-                                   as.numeric(as.character(subset(mydata, Time==Quarter)$Best1)))
+    commentstable=subset(mydata, Time==Quarter)[,c("Best", "Best1")]
     
     names(commentstable)=c("Improve", "Imp1")
     
+    miscprint = subset(mydata, Time == Quarter)$Best[is.na(subset(mydata, Time == Quarter)$Best1)]
+        
   }
 
   store=list() 
@@ -496,22 +537,86 @@ mycomments=function(x){
       } # matches with if(sum comments>0)  
     } # matches for for (x in length) 
   } # matches with if () error handling 
+  
+  # print the misc comments
+  
+  myCat(c("<h3>Miscellaneous</h3>"))
+  
+  miscprint = miscprint[!is.na(miscprint)]
+  
+  for (c in 1:length(miscprint)){
+      
+      myCat(miscprint[c])
+      
+      myCat("<br>")
+      
+  }
+  
+  if(type==2){ # only if it's best thing, i.e. at the end
+  
+  # print PO
+  
+  myCat(c("<h3>Patient Opinion</h3>"))
+  
+  poPrint = subset(mydata, Time==Quarter)$PO[!is.na(subset(mydata, Time==Quarter)$PO)]
+  
+  for (c in 1:length(poPrint)){
+      
+      myCat(poPrint[c])
+      
+      myCat("<br>")
+      
+  }  
+  
+  # print PALS
+  
+  myCat(c("<h3>PALS</h3>"))
+  
+  palsPrint = subset(mydata, Time==Quarter)$PALS[!is.na(subset(mydata, Time==Quarter)$PALS)]
+  
+  for (c in 1:length(palsPrint)){
+      
+      myCat(palsPrint[c])
+      
+      myCat("<br>")
+      
+  }
+  
+  } # end only if it's best thing
+    
 } # matches with function
 
 ##########################################
 ##### response rate function #############
 ##########################################
 
-myResponse = function() {
+myResponse = function(PlaceN, PlaceC) {
+    
+    # PlaceN = "Directorate"
+    # PlaceC = 2
+    
+    mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC,]
+    
+    help=table(mydata$TeamC[mydata$Time == Quarter])
+    
+    teamnames=names(help)
+    
+    teamnumbers=help
 
-    responseTab = data.frame("TeamC" = as.numeric(teamnames), "Responses" = teamnumbers)
+    responseTab = data.frame("TeamC" = as.numeric(teamnames), "Responses" = as.numeric(teamnumbers))
 
-    finalTab = merge(responseTab, subset(counts, Time==Quarter), by = "TeamC", all.x=TRUE)[,c("TeamC", "TeamN", "Responses", "Contacts")]
+    finalTab = merge(responseTab, subset(counts, Time==Quarter), by = "TeamC", all.x=TRUE)[,c("TeamC",
+                                                                                              "TeamN", "Responses", "Contacts")]
 
     finalTab$Percent = round(finalTab$Responses / finalTab$Contacts * 100, 1)
 
-    finalTab$TeamN = sapply(as.numeric(teamnames), function(x) as.character(subset(mydatafirst, Time==Quarter)$TeamN
-                                                                        [tail(which(x==subset(mydatafirst, Time==Quarter)$TeamC), 1)]))
+#     finalTab$TeamN = as.character(sapply(as.numeric(teamnames), function(x) as.character(subset(mydatafirst, Time==Quarter)$TeamN
+#                                                                         [tail(which(x==subset(mydatafirst, Time==Quarter)$TeamC), 1)])))
+    
+    finalTab$TeamN = as.character(
+        sapply(finalTab$TeamC, function(x)
+        tail(as.character(counts$TeamN[which(x==counts$TeamC)]), 1))
+    )
     
     finalTab$Percent[finalTab$Percent>100] = 100
     
@@ -519,7 +624,9 @@ myResponse = function() {
     
     finalTab[4:5][is.na(finalTab[4:5])] = "NK"
     
-    print(xtable(finalTab[-1]), type="html", append=TRUE, file=currentPath, include.rownames = FALSE)
+    names(finalTab)[2] = c("Team")
+    
+    print(xtable(finalTab[-1]), type="html", append = TRUE, file=currentPath, include.rownames = FALSE)
     
     return(finalTab)
     
@@ -540,7 +647,7 @@ file.copy(file.path(getwd(), "report.css",  fsep = .Platform$file.sep),
 file.copy(file.path(getwd(), "logo.png",  fsep = .Platform$file.sep),
           file.path(getwd(), "temp/logo.png",  fsep = .Platform$file.sep))
 
-currentPath = file.path(getwd(), "temp", "Index.html", fsep = .Platform$file.sep)
+currentPath <<- file.path(getwd(), "temp", "trust.html", fsep = .Platform$file.sep)
 
 cat("<html>", "\n", file = currentPath)
 
@@ -564,16 +671,14 @@ myCat('<div id="header">')
 
   myCat('<strong>Service User and Carer Experience Report</strong><br />')
 
-  myCat('<em>January 2013</em><br />')
+  myCat(c('<em>Retrieved on:', format(Sys.time(), "%a %b %d %Y"), '</em><br />'))
 
-  myCat('<span>V1.2</span></p>')
-    
   myCat('</div>')
     
 myCat('<div id="breadcrumb">')
-    
-  myCat('<a href="index.html">Trust summary</a>')
 
+myCat('<a href="index.html">Index</a> &rsaquo; Trust summary')
+    
 myCat('</div>')
 
 myCat("<h1> Trust summary </h1>")
@@ -594,37 +699,50 @@ myCat('<div id="content-left">')
 
   Subset.P=subset(mydatafirst, Time==Quarter)
 
-  Subset.B=mydatafirst 
+  myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
+                                                   sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) -
+                                                   sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/
+                                                   sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0),
+          ". This compares with ", round((sum(subset(mydatafirst, Time == Quarter-1)$Promoter == 5, na.rm=TRUE)/
+                                              sum(subset(mydatafirst, Time == Quarter-1)$Promoter %in% 1:5, na.rm=TRUE) -
+                                              sum(subset(mydatafirst, Time == Quarter-1)$Promoter %in% 1:3, na.rm=TRUE)/
+                                              sum(subset(mydatafirst, Time == Quarter-1)$Promoter %in% 1:5, na.rm=TRUE))*100, 0)
+          , " in the previous quarter and ",
+          round((sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1))$Promoter == 5, na.rm=TRUE)/
+                     sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:5, na.rm=TRUE) -
+                     sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:3, na.rm=TRUE)/
+                     sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:5, na.rm=TRUE))*100, 0),
+          " in the previous four quarters."))
 
-  mycloud(0:2, 1, "Whole Trust") 
+  mycloud("Local", 0:2, "Improve", "Trust") 
 
-  myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+  myCat(c('<img src= "', graph, '.png" alt = "Improve one thing - word cloud" />'))
 
-  mycloud(0:2, 2, "Whole Trust") 
+  mycloud("Local", 0:2, "Best", "Trust") 
 
-  myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+  myCat(c('<img src= "', graph, '.png" alt = "Best thing - word cloud" />'))
 
-  stack(Subset.P, 1) 
+  stack(PlaceN = "Local", PlaceC = 0:2, Trust = 1, myLabels = mainlist) 
 
-  myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+  myCat(c('<img src= "', graph, '.png" alt = "Stacked barchart" />'))
 
   mybar(PlaceN="Local", PlaceC=0:2, GraphN=1, type="main")
 
   if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
     
-      myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+      myCat(c('<img src= "', graph, '.png" alt = "Trend barchart" />'))
     
   } 
 
   myCat("<h2> Improve one thing </h2>")
 
-  mytable(1) 
+  mytable("Local", 0:2, 1) 
 
   myCat("<br>")
 
   myCat("<h2> Best thing </h2>")
 
-  mytable(2)
+  mytable("Local", 0:2, 2)
 
   myCat("<br>")
 
@@ -634,19 +752,21 @@ myCat('<div id="content-right">')
 
   myCat('<h2>Navigation</h2>')
     
-  myCat('<ul>')
+  myCat('<ol>')
 
-    myCat('<li><a href="Local.html">Local services</a><br></li>')
+    myCat('<li><a href="local.html">Local services</a><br></li>')
 
-    myCat('<li><a href="Special.html">Specialist services directorate</a><br></li>')
+    myCat('<li><a href="special_local.html">Specialist services directorate</a><br></li>')
 
-    myCat('<li><a href="Forensic.html">Forensic services</a><br></li>')
+    myCat('<li><a href="forensic.html">Forensic services</a><br></li>')
 
-    myCat('<li><a href="SpecialF.html">Special services (Rampton) directorate</a><br></li>')
+    check1 = stack(PlaceN = "Directorate", PlaceC = 8:12, myLabels = funcLabels)
 
-    myCat('<li><a href="HP.html">Health partnerships</a><br></li>')
+    if(check1) myCat('<li><a href="special_f.html">Special services (Rampton) directorate</a><br></li>')
 
-  myCat('</ul>')
+    myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
+
+  myCat('</ol>')
 
 myCat("</div>")
 
@@ -658,152 +778,164 @@ myCat("</html>")
 
 ########################################## 
 ##########################################   
-######## Local Division section  ######### 
+########       Division section  ######### 
 ########################################## 
 ########################################## 
 
-currentPath = file.path(getwd(), "temp", "Local.html", fsep = .Platform$file.sep)
-
-mydata=subset(mydatafirst, Local==0) 
-
-Subset.P=subset(mydatafirst, Time==Quarter&Local==0)
-
-Subset.B=subset(mydatafirst, Local==0)
-
-myCat("<html>")
-
-myCat("<head>")
-
-myCat("<title>Local services</title>")
-
-myCat('<link href="report.css" rel="stylesheet" type="text/css" />')
-
-myCat("</head>")
-
-myCat("<body>")
-
-myCat('<div id="report">') # this tag ends right at the end
-
-myCat('<div id="header">')
-
-  myCat('<a href="#"><img src="logo.png" alt="Positive... about change" /></a>')
-
-  myCat('<p class="title">')
-
-  myCat('<strong>Service User and Carer Experience Report</strong><br />')
-
-  myCat('<em>January 2013</em><br />')
-
-  myCat('<span>V1.2</span></p>')
-
-myCat('</div>')
-
-myCat('<div id="breadcrumb">')
-
-  myCat('<a href="index.html">Trust summary</a> &rsaquo; Local services')
-
-myCat('</div>')
-
-myCat("<h1> Local services division </h1>")
-
-myCat('<div id="content-left">')
-
-  myCat(c("<p>In local services division we received ", length(subset(mydata, Time==Quarter)$Service),
-           " responses. Of these ", table(subset(mydata, Time==Quarter)$SU)[2],
-           " were from carers. This is a response rate of ",
-          round(length(subset(mydata, Time==Quarter)$Service) / sum(subset(counts, Time==Quarter & Division==0)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
-
-  myCat(c("<p>This quarter the division had a service quality rating of ",
-           round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
-           " %. This compares with ", round(mean(subset(mydata, Time==Quarter-1)$Service, na.rm=TRUE)*20),
-           " % in the previous quarter and ", round(mean(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20),
-           " % in the previous four quarters.</p>"))
-
-  myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE)
-                                                - sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), "</p>"))
-
-  mycloud(0, 1, "Local services division") 
-  
-  myCat(c("<img src= ", graph, ".png", " width=500</a><br>", "\n", sep=""))
-  
-  mycloud(0, 2, "Local services division") 
-  
-  myCat(c("<img src= ", graph, ".png", " width=500</a><br>", "\n", sep=""))
-
-  stack(Subset.P) 
-
-  myCat(c("<img src= ", graph, ".png", " width=500</a><br>", "\n", sep=""))
-
-  mybar(PlaceN="Local", PlaceC=0, GraphN=1, type="main")
+bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcLabels) {
     
-  if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
-
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>", "\n", sep=""))
-
-  }
-   
-  mybar(PlaceN="Local", PlaceC=0, GraphN=2, type="main")
-
-  if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
-  
-    myCat(c("<img src= ", graph, ".png", " width=500</a><br>", "\n", sep=""))
-  
-  } 
-
-  myCat("<h2> Improve one thing </h2>")
-  
-  mytable(1) 
-
-  myCat("<br>")
-
-  myCat("<h2> Best thing </h2>")
-
-  mytable(2)
-
-  myCat("<br>")
-
-myCat("</div")
-
-myCat('<div id="content-right">')
-
-  myCat('<h3>Navigation</h3>')
-
-  myCat('<ul>')
-
-    for (d in c(2, 7)) {
+    # name = "Health partnerships"
+    # PlaceC = 2
+    # PlaceN = "Local"
+    # URL = "HP"
+    # barType = "HP"
+    # dirVec = c(25:31)
     
-      myCat(c("<li><a href=", gsub("\\s","_", directorate[d]), ".html>", directorate[d], "</a><br></li>"))
+    ## only do this if it's a request for a division section
     
-    }
-
-  myCat('</ul>')
-
-myCat("</div>")
-
-myCat("</div>") # report
-
-myCat("</body>")
-  
-myCat("</html>")
+    if(!999 %in% funcPlaceC){
+      
+        currentPath <<- file.path(getwd(), "temp", paste0(URL, ".html"), fsep = .Platform$file.sep)
+        
+        mydata=mydatafirst[mydatafirst[,funcPlaceN] %in% funcPlaceC,]
+        
+        Subset.P=mydatafirst[mydatafirst[,funcPlaceN] %in% funcPlaceC & mydatafirst$Time==Quarter,]
+        
+        myCat("<html>")
+        
+        myCat("<head>")
+        
+        myCat(c("<title>", name, "</title>"))
+        
+        myCat('<link href="report.css" rel="stylesheet" type="text/css" />')
+        
+        myCat("</head>")
+        
+        myCat("<body>")
+        
+        myCat('<div id="report">') # this tag ends right at the end
+        
+        myCat('<div id="header">')
+        
+        myCat('<a href="#"><img src="logo.png" alt="Positive... about change" /></a>')
+        
+        myCat('<p class="title">')
+        
+        myCat('<strong>Service User and Carer Experience Report</strong><br />')
+        
+        myCat(c('<em>Retrieved on:', format(Sys.time(), "%a %b %d %Y"), '</em><br />'))
+        
+        myCat('</div>')
+        
+        myCat('<div id="breadcrumb">')
+        
+        myCat(c('<a href="index.html">Index</a> &rsaquo; <a href="trust.html">Trust summary</a> &rsaquo; ', name))
+        
+        myCat('</div>')
+        
+        myCat(c("<h1>", name, "</h1>"))
+        
+        myCat('<div id="content-left">')
+        
+        myCat(c("<p>In ", tolower(name), " we received ", length(subset(mydata, Time==Quarter)$Service),
+                " responses. Of these ", table(subset(mydata, Time==Quarter)$SU)[2],
+                " were from carers. This is a response rate of ",
+                round(length(subset(mydata, Time==Quarter)$Service) / sum(subset(counts, Time==Quarter & Local==0)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
+        
+        myCat(c("<p>This quarter ", tolower(name), " had a service quality rating of ",
+                round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
+                " %. This compares with ", round(mean(subset(mydata, Time==Quarter-1)$Service, na.rm=TRUE)*20),
+                " % in the previous quarter and ", round(mean(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20),
+                " % in the previous four quarters.</p>"))
+        
+        myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
+                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) -
+                                                         sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/
+                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), "</p>"))
+        
+        mycloud(PlaceN = funcPlaceN, PlaceC = funcPlaceC, type = "Improve", cloudname = name) 
+        
+        myCat(c('<img src= "', graph, '.png" alt = "Improve one thing- Word cloud" />'))
+        
+        mycloud(PlaceN = funcPlaceN, PlaceC = funcPlaceC, type = "Best", cloudname = name)
+        
+        myCat(c('<img src= "', graph, '.png" alt = "Best thing- word cloud" />'))
+        
+        stack(PlaceN = funcPlaceN, PlaceC = funcPlaceC, myLabels = funcLabels)
+        
+        myCat(c('<img src= "', graph, '.png" alt = "Stacked barchart" />'))
+        
+        mybar(PlaceN=funcPlaceN, PlaceC=funcPlaceC, GraphN=1, type=barType)
+        
+        if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
+            
+            myCat(c('<img src= "', graph, '.png" alt = "Trend barchart" />'))
+            
+        }
+        
+        mybar(PlaceN=funcPlaceN, PlaceC=funcPlaceC, GraphN=2, type=barType)
+        
+        if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
+            
+            myCat(c('<img src= "', graph, '.png" alt = "Trend barchart - 2nd" />'))
+            
+        } 
+        
+        myCat("<h2> Improve one thing </h2>")
+        
+        mytable(PlaceN=funcPlaceN, PlaceC=funcPlaceC, 1) 
+        
+        myCat("<br>")
+        
+        myCat("<h2> Best thing </h2>")
+        
+        mytable(PlaceN=funcPlaceN, PlaceC=funcPlaceC, 2)
+        
+        myCat("<br>")
+        
+        myCat("</div")
+        
+        myCat('<div id="content-right">')
+        
+        myCat('<h3>Navigation</h3>')
+        
+        myCat('<ol>')
+        
+        for (d in dirVec) {
+            
+            checkdir = stack(PlaceN = "Directorate", PlaceC = d, myLabels = mainlist)
+            
+            if(checkdir) {
+                myCat(c("<li><a href=", gsub("\\s","_", tolower(directorate[d])), ".html>", directorate[d],
+                    "</a><br></li>"))
+            }
+            
+        }
+        
+        myCat('</ol>')
+        
+        myCat("</div>")
+        
+        myCat("</div>") # report
+        
+        myCat("</body>")
+        
+        myCat("</html>")
+        
+    } # end if it's a division request
 
 ###########################################
 ########### Directorate section ###########
 ###########################################
  
-for (d in c(2, 7)) {
+for (d in dirVec) {
    
-  currentPath = file.path(getwd(), "temp", paste0(gsub("\\s","_", directorate[d]), ".html"), fsep = .Platform$file.sep)
+  currentPath <<- file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                            fsep = .Platform$file.sep)
     
-  mydata=subset(mydatafirst, Directorate==d) 
+  check1 = stack(PlaceN = "Directorate", PlaceC = d, myLabels = funcLabels)
 
-  Subset.P=subset(mydatafirst, Time==Quarter&Directorate==d)
-  
-  Subset.B=subset(mydatafirst, Directorate==d) 
-
-  stack(Subset.P) 
-
-  if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
-                       ".png", sep=""))){ 
+  if(check1){
    
     myCat("<html>")
       
@@ -827,90 +959,92 @@ for (d in c(2, 7)) {
       
       myCat('<strong>Service User and Carer Experience Report</strong><br />')
       
-      myCat('<em>January 2013</em><br />')
-      
-      myCat('<span>V1.2</span></p>')
-      
+    myCat(c('<em>Retrieved on:', format(Sys.time(), "%a %b %d %Y"), '</em><br />'))
+    
       myCat('</div>')
       
     myCat('<div id="breadcrumb">') # automate
-      
-      myCat(c('<a href="index.html">Trust summary</a> &rsaquo; <a href="local.html">Local services</a> &rsaquo;', directorate[d]))
+    
+      myCat(c(paste0('<a href="index.html">Index</a> &rsaquo; <a href="trust.html">Trust summary</a> &rsaquo;
+                     <a href="', URL, '.html">', name), '</a> &rsaquo;', directorate[d]))
     
     myCat('</div>')
       
       myCat(c("<h1> ", directorate[d], " </h1>"))
       
       myCat('<div id="content-left">')
+    
+        Subset.P=subset(mydatafirst, Time==Quarter&Directorate==d)
+    
+        Subset.P$sumNA = apply(Subset.P[,c("Service", "Listening", "Communication", "Respect", "InvCare")],
+                      1, function(x) sum(!is.na(x), na.rm=TRUE))
+    
+        Subset.P=subset(Subset.P, sumNA>0)
 
-        mydata$sumNA=as.numeric(!is.na(mydata$Service))+ as.numeric(!is.na(mydata$Listening)) +
-          as.numeric(!is.na(mydata$Communication))+ as.numeric(!is.na(mydata$Respect))+ as.numeric(!is.na(mydata$InvCare))   
-  
-        mydata=subset(mydata, sumNA>0)
-
-        help=table(mydata$TeamC, mydata$Time)[,ncol(table(mydata$TeamC, mydata$Time))]
+        help=table(Subset.P$TeamC)
 
         teamnames=names(which(help>2))
     
         teamnumbers=help[which(help>2)]
+    
+        Subset.P = Subset.P[Subset.P$TeamC %in% teamnames,]
 
-        mydata2=subset(mydata, TeamC %in% teamnames)  
-
-        myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydatafirst, Time==Quarter&Directorate==d)$Service),
+        myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydatafirst, Time==Quarter & Directorate==d)$Service),
                 " responses. Of these ", table(factor(subset(mydatafirst, Time==Quarter&Directorate==d)$SU, levels=0:1))[2],
                 " were from carers. This is a response rate of ", 
-                round(length(subset(mydata, Time==Quarter)$Service) / sum(subset(counts, Time==Quarter & Directorate==d)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
+                round(length(subset(mydatafirst, Time==Quarter & Directorate==d)$Service) /
+                          sum(subset(counts, Time==Quarter & Directorate==d)$Contacts, na.rm=TRUE)*100, 1), " %.</p>"))
 
         myCat(c("<p>This quarter the directorate had a service quality rating of ",
-                round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
+                round(mean(subset(mydatafirst, Time==Quarter)$Service, na.rm=TRUE)*20),
                 ". This compares with ", round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
                 " in the previous quarter and ",
-                round(mean(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20),
+                round(mean(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1))$Service, na.rm=TRUE)*20),
                 "% in the previous four quarters.</p>"))
 
         myCat(c("<p>Net promoter score was ", round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
                                                          sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) -
                                                          sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/
-                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), "%.</p>"))
+                                                         sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0), ".</p>"))
   
-        myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+        myCat(c('<img src= "', graph, '.png" alt = "Stacked barchart" />'))
 
-        mybar(PlaceN="Directorate", PlaceC=d, GraphN=1, type="main")
+        mybar(PlaceN="Directorate", PlaceC=d, GraphN=1, type=barType)
 
         if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
   
-          myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+            myCat(c('<img src= "', graph, '.png" alt = "Trend barchart" />'))
   
         } 
 
-        mybar(PlaceN="Directorate", PlaceC=d, GraphN=2, type="main")
+        mybar(PlaceN="Directorate", PlaceC=d, GraphN=2, type=barType)
 
         if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep),
                      ".png", sep=""))){ 
   
-          myCat(c("<img src= ", graph, ".png", " width=500</a>"))
+            myCat(c('<img src= "', graph, '.png" alt = "Trend barchart- 2nd" />'))
   
         } 
 
         myCat("<h2> Improve one thing individual comments </h2>")
 
-        mycomments(1) 
+        mycomments(PlaceN="Directorate", PlaceC=d, 1) 
   
         myCat("<h2> Best thing individual comments </h3>")
 
-        mycomments(2) 
+        mycomments(PlaceN="Directorate", PlaceC=d, 2) 
   
         myCat("<h2> Improve one thing summary </h2>")
    
-        mytable(1) 
+        mytable(PlaceN="Directorate", PlaceC=d, 1) 
 
         myCat("<h2> Best thing summary </h2>")
     
-        mytable(2) 
+        mytable(PlaceN="Directorate", PlaceC=d, 2) 
 
         myCat("<br>")
     
-        dirResponseTable = myResponse()
+        dirResponseTable = myResponse(PlaceN="Directorate", PlaceC=d)
     
       myCat("</div")
     
@@ -918,7 +1052,7 @@ for (d in c(2, 7)) {
     
         myCat('<h3>Navigation</h3>')
     
-        myCat('<ul>')
+        myCat('<ol>')
     
           for (team in teamnames) {
         
@@ -927,7 +1061,7 @@ for (d in c(2, 7)) {
         
           }
     
-        myCat('</ul>')
+        myCat('</ol>')
     
       myCat("</div>")
     
@@ -940,10 +1074,10 @@ for (d in c(2, 7)) {
     ##############################################
     ################## team ######################
     ##############################################
+
+    for(team in as.numeric(names(table(Subset.P$TeamC)[table(Subset.P$TeamC)>0]))) { 
     
-  for(team in as.numeric(names(table(droplevels(mydata2$TeamC))))) { 
-    
-    currentPath = file.path(getwd(), "temp", paste0(team, ".html"), fsep = .Platform$file.sep)
+    currentPath <<- file.path(getwd(), "temp", paste0(team, ".html"), fsep = .Platform$file.sep)
     
     myCat("<html>")
     
@@ -968,16 +1102,15 @@ for (d in c(2, 7)) {
     
       myCat('<strong>Service User and Carer Experience Report</strong><br />')
     
-      myCat('<em>January 2013</em><br />')
-    
-      myCat('<span>V1.2</span></p>')
+    myCat(c('<em>Retrieved on:', format(Sys.time(), "%a %b %d %Y"), '</em><br />'))
     
     myCat('</div>')
     
     myCat('<div id="breadcrumb">')
     
-      myCat(c('<a href="index.html">Trust summary</a>&rsaquo; <a href="local.html">Local services</a>
-            &rsaquo; <a href="', gsub("\\s","_", directorate[d]), '.html">', directorate[d],'</a> &rsaquo; ',
+    myCat(c(paste0('<a href="index.html">Index</a> &rsaquo; <a href="trust.html">Trust summary</a> &rsaquo; <a href="',
+                   URL, '.html">', name), '</a> &rsaquo; <a href="', gsub("\\s","_", directorate[d]), '.html">',
+            directorate[d],'</a> &rsaquo; ',
             as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst,
                                                                                           Time==Quarter)$TeamC), 1)])))
     
@@ -987,39 +1120,37 @@ for (d in c(2, 7)) {
                                         Time==Quarter)$TeamC), 1)]), " </h1>"))
     
     myCat('<div id="content-left">')
+    
+      Subset.T = subset(mydatafirst, TeamC==team & Time == Quarter)
 
-      Subset.P=subset(mydata, Time==Quarter&TeamC==team)
- 
-      Subset.B=subset(mydata, TeamC==team)
-
-      stack(Subset.P) 
+      stack(PlaceN = "TeamC", PlaceC = team, myLabels = funcLabels)
 
       myCat(c("<p>In ", as.character(subset(mydatafirst, Time==Quarter)$TeamN[tail(which(team==subset(mydatafirst, Time==Quarter)$TeamC), 1)]), " we received ", length(subset(mydatafirst, TeamC==team&Time==Quarter)$Service), " responses.  This is a response rate of ", dirResponseTable$Percent[dirResponseTable$TeamC==team], " %. 
               Of these ", length(subset(mydatafirst, TeamC==team&Time==Quarter&SU==1)$Service), " were from carers.</p>"))
 
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
+      myCat(c('<img src= "', graph, '.png" alt = "Stacked barchart" />'))
 
-      mybar(PlaceN="TeamC", PlaceC=team, GraphN=1, type="main")
+      mybar(PlaceN="TeamC", PlaceC=team, GraphN=1, type=barType)
 
     if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
      
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
+      myCat(c('<img src= "', graph, '.png" alt = "Trend barchart" />'))
      
     } 
    
-    mybar(PlaceN="TeamC", PlaceC=team, GraphN=2, type="main")
+    mybar(PlaceN="TeamC", PlaceC=team, GraphN=2, type=barType)
    
     if(file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
      
-      myCat(c("<img src= ", graph, ".png", " width=500</a><br>"))
+        myCat(c('<img src= "', graph, '.png" alt = "Trend barchart- 2nd" />'))
      
     } 
    
     myCat("<h2> Improve one thing </h2>")
  
-    for (i in which(!is.na(Subset.P$Improve)==TRUE)){ 
+    for (i in which(!is.na(Subset.T$Improve)==TRUE)){ 
 
-      vecprint=as.character(Subset.P$Improve[i]) 
+      vecprint=as.character(Subset.T$Improve[i]) 
 
       myCat(c(vecprint, "<br>"))
 
@@ -1027,12 +1158,32 @@ for (d in c(2, 7)) {
   
     myCat("<h2> Best thing </h2>")
  
-    for (i in which(!is.na(Subset.P$Best)==TRUE)){ 
+    for (i in which(!is.na(Subset.T$Best)==TRUE)){ 
 
-      vecprint=as.character(Subset.P$Best[i]) 
+      vecprint=as.character(Subset.T$Best[i]) 
 
       myCat(c(vecprint, "<br>"))
     
+    }
+    
+    myCat("<h2>Patient Opinion</h2>")
+    
+    for (i in which(!is.na(Subset.T$PO)==TRUE)){ 
+      
+      vecprint=as.character(Subset.T$PO[i]) 
+      
+      myCat(c(vecprint, "<br>"))
+      
+    } 
+    
+    myCat("<h2>PALS</h2>")
+    
+    for (i in which(!is.na(Subset.T$PALS)==TRUE)){ 
+      
+      vecprint=as.character(Subset.T$PALS[i]) 
+      
+      myCat(c(vecprint, "<br>"))
+      
     } 
       
     myCat("</div")
@@ -1041,7 +1192,7 @@ for (d in c(2, 7)) {
       
       myCat('<h3>Navigation</h3>')
       
-      myCat('<ul>')
+      myCat('<ol>')
       
       for (team in teamnames) {
           
@@ -1050,7 +1201,7 @@ for (d in c(2, 7)) {
           
       }
       
-    myCat('</ul>')
+    myCat('</ol>')
       
     myCat("</div>")
       
@@ -1065,3 +1216,168 @@ for (d in c(2, 7)) {
 } # matches with if.exists(d)
   
 } # matches with for (d in...)
+
+} # matches with bigFunction
+
+bigFunction(name = "Specialist services (local)", funcPlaceC = c(4, 6, 13, 14), funcPlaceN = "Directorate",
+            URL = "special_local", barType = "main", dirVec = c(4, 6, 13, 14), funcLabels=mainlist)
+
+bigFunction(name = "Local services", funcPlaceC = 0, funcPlaceN = "Local", URL = "local", barType = "main",
+            dirVec = c(2,7), funcLabels = mainlist)
+
+bigFunction(name = "Specialist services (local)", funcPlaceC = 999, funcPlaceN = "Directorate",
+            URL = "special_local", barType = "main", dirVec = c(4, 6, 13, 14), funcLabels=mainlist)
+ 
+bigFunction(name = "Forensic services", funcPlaceC = 1, funcPlaceN = "Local", URL = "forensic",
+            barType = "main", dirVec = c(3, 5, 15, 16), funcLabels = mainlist)
+
+bigFunction(name = "Offender health", funcPlaceC = 999, funcPlaceN = "Directorate",
+            URL = "HMP", barType = "HMP", dirVec = c(16), funcLabels = offendermain)
+
+bigFunction(name = "Special services (Rampton)", funcPlaceC = 8:12, funcPlaceN = "Directorate",
+            URL = "special_f", barType = "main", dirVec = c(8:12), funcLabels = mainlist)
+
+bigFunction(name = "Health partnerships", funcPlaceC = 2, funcPlaceN = "Local", URL = "hp", barType = "HP",
+            dirVec = c(25:31), funcLabels = CHPmain)
+
+### now the index
+
+currentPath <<- file.path(getwd(), "temp", "index.html", fsep = .Platform$file.sep)
+
+cat("<html>", "\n", file = currentPath)
+
+myCat("<head>")
+
+myCat("<title>Index</title>")
+
+myCat('<link href="report.css" rel="stylesheet" type="text/css" />')
+
+myCat("</head>")
+
+myCat("<body>")
+
+myCat('<div id="report">') # this tag ends right at the end
+
+myCat('<div id="header">')
+
+myCat('<a href="#"><img src="logo.png" alt="Positive... about change" /></a>')
+
+myCat('<p class="title">')
+
+myCat('<strong>Service User and Carer Experience Report</strong><br />')
+
+myCat(c('<em>Retrieved on:', format(Sys.time(), "%a %b %d %Y"), '</em><br />'))
+
+myCat('</div>')
+
+myCat('<div id="breadcrumb">')
+
+  myCat('<a href="index.html">Index</a> &rsaquo; ')
+
+myCat('</div>')
+
+myCat("<h1> Index </h1>")
+
+myCat('<ol>')
+
+myCat('<li><a href="trust.html">Trust summary</a><br></li>')
+
+myCat('<li><a href="local.html">Local services</a><br></li>')
+
+myCat('<ol>')
+
+for(d in c(2,7)){
+  
+  if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                           fsep = .Platform$file.sep))){
+    
+    myCat(c('<li><a href="', paste0(gsub("\\s","_", tolower(directorate[d])), ".html"), '">', directorate[d], '</a><br></li>'))
+        
+  }
+  
+}
+
+myCat('</ol>')
+
+myCat('<li><a href="special_local.html">Specialist services directorate</a><br></li>')
+
+myCat('<ol>')
+
+for(d in c(4, 6, 13, 14)){
+  
+  if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                           fsep = .Platform$file.sep))){
+    
+    myCat(c('<li><a href="', paste0(gsub("\\s","_", tolower(directorate[d])), ".html"), '">', directorate[d], '</a><br></li>'))
+    
+  }
+  
+}
+
+myCat('</ol>')
+
+myCat('<li><a href="forensic.html">Forensic services</a><br></li>')
+
+myCat('<ol>')
+
+for(d in c(3, 5, 15, 16)){
+  
+  if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                           fsep = .Platform$file.sep))){
+    
+    myCat(c('<li><a href="', paste0(gsub("\\s","_", tolower(directorate[d])), ".html"), '">', directorate[d], '</a><br></li>'))
+    
+  }
+  
+}
+
+myCat('</ol>')
+
+if(file.exists(file.path(getwd(), "temp", "special_f.html",
+                         fsep = .Platform$file.sep))){
+  
+myCat('<li><a href="special_f.html">Special services (Rampton) directorate</a><br></li>')
+
+myCat('<ol>')
+
+for(d in 8:12){
+  
+  if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                           fsep = .Platform$file.sep))){
+    
+    myCat(c('<li><a href="', paste0(gsub("\\s","_", tolower(directorate[d])), ".html"), '">', directorate[d], '</a><br></li>'))
+    
+  }
+  
+}
+
+myCat('</ol>')
+
+} # end does special_f.html exist
+
+myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
+
+myCat('<ol>')
+
+for(d in 25:31){
+  
+  if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
+                           fsep = .Platform$file.sep))){
+    
+    myCat(c('<li><a href="', paste0(gsub("\\s","_", tolower(directorate[d])), ".html"), '">', directorate[d], '</a><br></li>'))
+    
+  }
+  
+}
+
+myCat('</ol>')
+
+myCat('</ol>')
+
+myCat("</div>") # report tag
+
+myCat("</body>")
+
+myCat("</html>")
+
+
