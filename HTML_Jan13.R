@@ -264,24 +264,24 @@ mycloud=function(PlaceN, PlaceC, type, cloudname){
     
     graph <<- graph + 1
     
-    ########################################## 
-    ######### while testing- delete !!!! #####
-    ##########################################
-    
-    png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
-        width = 658, units = "px", pointsize=12)
-    
-    plot(runif(10))
-    
-    text(6, .5, "Wordcloud in final version!", cex=3)
-    
-    waste = dev.off()
-    
-    return()
-    
-    ######################################### 
-    ######### end of delete !!!!!!!!!!! #####
-    #########################################
+#     ########################################## 
+#     ######### while testing- delete !!!! #####
+#     ##########################################
+#     
+#     png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
+#         width = 658, units = "px", pointsize=12)
+#     
+#     plot(runif(10))
+#     
+#     text(6, .5, "Wordcloud in final version!", cex=3)
+#     
+#     waste = dev.off()
+#     
+#     return()
+#     
+#     ######################################### 
+#     ######### end of delete !!!!!!!!!!! #####
+#     #########################################
     
     if(!file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
         
@@ -465,9 +465,7 @@ mytable=function(PlaceN, PlaceC, x){
 
 mycomments=function(PlaceN, PlaceC, type){ 
     
-    # PlaceN = "Directorate"
-    # PlaceC = 2
-    # type = 1
+    # PlaceN = "Directorate"; PlaceC = 2; type = 1
     
     mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC,]
     
@@ -497,7 +495,7 @@ mycomments=function(PlaceN, PlaceC, type){
     
     for(x in 1:length(levels(factor(exampletable$Super)))){ 
         
-        store=lappend(store, which(exampletable$Super==levels(factor(exampletable$Super))[x])) 
+        store=lappend(store, exampletable$Number[which(exampletable$Super==levels(factor(exampletable$Super))[x])])
         
     } 
     
