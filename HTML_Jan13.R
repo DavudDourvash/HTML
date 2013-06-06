@@ -256,11 +256,11 @@ mybar=function(PlaceN, PlaceC, GraphN, type){
 
 # x is local or forensic, y is Improve/ best 
 
-mycloud=function(PlaceN, PlaceC, type, cloudname){  
+mycloud=function(PlaceN, PlaceC, type, cloudname){
     
     mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% (Quarter-3):Quarter,]
     
-    pal <- brewer.pal(8,"Dark2") 
+    pal <- brewer.pal(8,"Dark2")
     
     graph <<- graph + 1
     
@@ -286,7 +286,7 @@ mycloud=function(PlaceN, PlaceC, type, cloudname){
     if(!file.exists(paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""))){ 
         
         png(file=paste(file.path(getwd(), "temp", graph, fsep = .Platform$file.sep), ".png", sep=""),
-            width = 658, units = "px", pointsize=12)
+           width = 658, units = "px", pointsize=12)
         
         mycorpus=Corpus(DataframeSource(data.frame(mydata[-is.na(mydata[,type]), type]))) 
         
@@ -672,7 +672,7 @@ myCat('</div>')
 
 myCat('<div id="breadcrumb">')
 
-myCat('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+myCat('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
       Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo; Trust summary')
 
 myCat('</div>')
@@ -826,7 +826,7 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
         
         myCat('<div id="breadcrumb">')
         
-        myCat(c('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+        myCat(c('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
                 Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo; <a href="trust.html">
                 Trust summary</a> &rsaquo; ', name))
         
@@ -992,14 +992,14 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
             
             if(!999 %in% funcPlaceC){
                 
-                myCat(c(paste0('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+                myCat(c(paste0('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
               Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo;
               <a href="trust.html">Trust summary</a> &rsaquo;
               <a href="', URL, '.html">', name), '</a> &rsaquo;', directorate[d]))
                 
             } else {
                 
-                myCat(c(paste0('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+                myCat(c(paste0('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
               Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo;
               <a href="trust.html">Trust summary</a> &rsaquo;
               <a href="forensic.html">Forensic services</a> &rsaquo;', directorate[d])))
@@ -1177,7 +1177,7 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
                 
                 if(!999 %in% funcPlaceC){
                     
-                    myCat(c(paste0('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+                    myCat(c(paste0('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
                    Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo;
                    <a href="trust.html">Trust summary</a> &rsaquo; <a href="',
                                    URL, '.html">', name), '</a> &rsaquo; <a href="', gsub("\\s","_", tolower(directorate[d])), '.html">',
@@ -1187,7 +1187,7 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
                     
                 } else {
                     
-                    myCat(c(paste0('<a href="feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+                    myCat(c(paste0('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
                    Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo;
                    <a href="trust.html">Trust summary</a> &rsaquo;
                        <a href="forensic.html">Forensic services</a>',
@@ -1401,8 +1401,6 @@ for(d in c(2,7)){
     
 }
 
-myCat('</ol>')
-
 myCat('<li><a href="special_local.html">Specialist services directorate</a><br></li>')
 
 myCat('<ol>')
@@ -1420,6 +1418,8 @@ for(d in c(4, 6, 13, 14)){
 
 myCat('</ol>')
 
+myCat('</ol>')
+
 myCat('<li><a href="forensic.html">Forensic services</a><br></li>')
 
 myCat('<ol>')
@@ -1434,8 +1434,6 @@ for(d in c(3, 5, 15, 16)){
     }
     
 }
-
-myCat('</ol>')
 
 if(file.exists(file.path(getwd(), "temp", "special_f.html",
                          fsep = .Platform$file.sep))){
@@ -1459,6 +1457,9 @@ if(file.exists(file.path(getwd(), "temp", "special_f.html",
     
 } # end does special_f.html exist
 
+myCat('</ol>')
+
+
 myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
 
 myCat('<ol>')
@@ -1473,6 +1474,7 @@ for(d in 25:31){
     }
     
 }
+
 
 myCat('</ol>')
 
