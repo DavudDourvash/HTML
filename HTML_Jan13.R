@@ -4,20 +4,33 @@ rm(list=ls())
 setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\Patient_Survey\\",
              "~/Dropbox/R-files/Patient_Survey")) 
 
-exampletable=read.csv("Categories_comments.csv", stringsAsFactors =FALSE)
+exampletable=read.csv("Categories_comments.csv", stringsAsFactors = FALSE)
 
 mydatafirst = read.csv("FINAL-DATA.csv", na.strings=c("NA", "", 99, 88), stringsAsFactors=FALSE)
 
 counts=read.csv("Counts.csv")
 
-setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\",
-             "~/Dropbox/R-files/HTML"))
+setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\",
+             "~/"))
+
+do.call(file.remove, list(list.files(file.path(getwd(), "temp/",
+                                               fsep = .Platform$file.sep), full.names=TRUE)))
+
+file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\report.css",
+                           "~/Dropbox/R-files/HTML/report.css"),  fsep = .Platform$file.sep),
+          file.path(getwd(), "temp/report.css",  fsep = .Platform$file.sep))
+
+file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\logo.png",
+                           "~/Dropbox/R-files/HTML/logo.png"),  fsep = .Platform$file.sep),
+          file.path(getwd(), "temp/logo.png",  fsep = .Platform$file.sep))
+
+setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\", "~/"))
 
 counts=counts[!duplicated(counts[, c("TeamC", "Time")]),]
 
 counts$Contacts = as.numeric(as.character(counts$Contacts))
 
-Quarter <<- 16 ### Mark current quarter here
+Quarter <<- 17 ### Mark current quarter here
 
 if(max(mydatafirst$Time, na.rm=TRUE)> Quarter) warning("Quarter value wrong")
 
@@ -36,7 +49,7 @@ mydatafirst$Imp1[!mydatafirst$Imp1 %in% exampletable$Number] = NA
 mydatafirst$Best1[!mydatafirst$Best1 %in% exampletable$Number] = NA
 
 library(tm) 
-library(wordcloud) 
+library(wordcloud)
 require(RColorBrewer) 
 library(ggplot2) 
 library(reshape) 
@@ -44,7 +57,8 @@ library(scales)
 library(xtable)
 library(plyr)
 
-directorate=c("Adult mental health City", "Adult mental health", "Arnold Lodge", "CAMHS", "Low secure + CFS",
+directorate=c("Adult mental health City", "Adult mental health", "Arnold Lodge",
+              "Child and adolescent mental health services", "Low secure + community forensic services",
               "Learning disability", "Mental health services for older people", "High secure LD", "High secure MH",
               "High secure PD", "Peaks", "High secure women's","Substance misuse", "Psychological therapy", "Wathwood",
               "Offender health", rep(NA, 8), "Bassetlaw", "Mansfield and Ashfield", "Newark and Sherwood",
@@ -631,15 +645,6 @@ myResponse = function(PlaceN, PlaceC) {
 
 # fix file path
 
-do.call(file.remove, list(list.files(file.path(getwd(), "temp/",
-                                               fsep = .Platform$file.sep), full.names=TRUE)))
-
-file.copy(file.path(getwd(), "report.css",  fsep = .Platform$file.sep),
-          file.path(getwd(), "temp/report.css",  fsep = .Platform$file.sep))
-
-file.copy(file.path(getwd(), "logo.png",  fsep = .Platform$file.sep),
-          file.path(getwd(), "temp/logo.png",  fsep = .Platform$file.sep))
-
 currentPath <<- file.path(getwd(), "temp", "trust.html", fsep = .Platform$file.sep)
 
 cat("<html>", "\n", file = currentPath)
@@ -841,14 +846,33 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
         responseRate = round(length(subset(mydata, Time==Quarter & Directorate!=16)$Service) /
                                  sum(subset(countsSubset, Time==Quarter & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
         
-        SQprevious = ifelse(sum(funcPlaceC %in% c(3, 8:12, 15))>0,
+        if(URL == "special_f"){
+            
+            responsePrev = round(length(subset(mydata, Time==(Quarter-2) & Directorate!=16)$Service) /
+                                     sum(subset(countsSubset, Time==(Quarter-2) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)            
+            
+        } else {
+            
+            responsePrev = round(length(subset(mydata, Time==(Quarter-1) & Directorate!=16)$Service) /
+                                     sum(subset(countsSubset, Time==(Quarter-1) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
+        }
+        
+
+        
+        responseYear = round(length(subset(mydata, Time %in% (Quarter-4):(Quarter-1) & Directorate!=16)$Service) /
+                     sum(subset(countsSubset, Time %in% (Quarter-4):(Quarter-1) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
+        
+        SQprevious = ifelse(sum(funcPlaceC %in% c(3, 5, 8:12, 15))>0,
                             round(mean(subset(mydata, Time==Quarter-2)$Service, na.rm=TRUE)*20),
                             round(mean(subset(mydata, Time==Quarter-1)$Service, na.rm=TRUE)*20))
         
         myCat(c("<p>In ", name, " we received ", length(subset(mydata, Time==Quarter)$Service),
                 " responses. Of these ", as.numeric(table(factor(subset(mydata, Time==Quarter)$SU, levels=0:1))[2]),
                 " were from carers.", ifelse(is.na(responseRate), "</p>", paste0("This is a response rate of ",
-                                                                                 responseRate, "%.</p>"))))
+                         responseRate, "%.", ifelse(is.na(responsePrev), " This compares with ",
+                                                    paste0("This compares with ", responsePrev,
+                         " % in the previous quarter and ")), responseYear,
+                         " % in the previous four quarters.</p>"))))
         
         myCat(c("<p>This quarter ", name, " had a service quality rating of ",
                 round(mean(subset(mydata, Time==Quarter)$Service, na.rm=TRUE)*20),
@@ -859,6 +883,21 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
         
         NPScheck = length(Subset.P$Promoter[!is.na(Subset.P$Promoter)]) >=50
         
+        NPSprevious = ifelse(sum(funcPlaceC %in% c(3, 5, 8:12, 15))>0,
+                             round((sum(subset(mydata, Time==Quarter-2)$Promoter == 5, na.rm=TRUE)/
+                                        sum(subset(mydata, Time==Quarter-2)$Promoter %in% 1:5, na.rm=TRUE) -
+                                        sum(subset(mydata, Time==Quarter-2)$Promoter %in% 1:3, na.rm=TRUE)/
+                                        sum(subset(mydata, Time==Quarter-2)$Promoter %in% 1:5, na.rm=TRUE))*100, 0),
+                             round((sum(subset(mydata, Time==Quarter-1)$Promoter == 5, na.rm=TRUE)/
+                                        sum(subset(mydata, Time==Quarter-1)$Promoter %in% 1:5, na.rm=TRUE) -
+                                        sum(subset(mydata, Time==Quarter-1)$Promoter %in% 1:3, na.rm=TRUE)/
+                                        sum(subset(mydata, Time==Quarter-1)$Promoter %in% 1:5, na.rm=TRUE))*100, 0))
+        
+        NPSyear = round((sum(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Promoter == 5, na.rm=TRUE)/
+                             sum(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:5, na.rm=TRUE) -
+                             sum(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:3, na.rm=TRUE)/
+                             sum(subset(mydata, Time %in% (Quarter-4):(Quarter-1))$Promoter %in% 1:5, na.rm=TRUE))*100, 0)
+        
         if(NPScheck){
             
             NPS = round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
@@ -868,7 +907,10 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
             
             if(!is.na(NPS)){
                 
-                myCat(c("<p>Net promoter score was ", NPS, "</p>"))
+                myCat(c("<p>Net promoter score was ", NPS, ifelse(is.na(NPSprevious),
+                            ". This compares with ", paste0(". This compares with ", NPSprevious,
+                            " in the previous quarter and ")), NPSyear,
+                        " in the previous four quarters.</p>"))
                 
             }
             
@@ -1012,7 +1054,30 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
             
             myCat('<div id="content-left">')
             
+            countsDir = counts[counts$Directorate == d,]
+            
             Subset.P=subset(mydatafirst, Time==Quarter&Directorate==d)
+            
+            mydata=subset(mydatafirst, Directorate==d)
+            
+            responseDir = round(length(subset(mydata, Time==Quarter & Directorate!=16)$Service) /
+                                     sum(subset(countsDir, Time==Quarter & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
+            
+            if(d %in% c(3, 5, 8:12, 15)){
+                
+                responsePrevDir = round(length(subset(mydata, Time==(Quarter-2) & Directorate!=16)$Service) /
+                                         sum(subset(countsDir, Time==(Quarter-2) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)            
+                
+            } else {
+                
+                responsePrevDir = round(length(subset(mydata, Time==(Quarter-1) & Directorate!=16)$Service) /
+                                         sum(subset(countsDir, Time==(Quarter-1) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
+            }
+            
+            
+            
+            responseYearDir = round(length(subset(mydata, Time %in% (Quarter-4):(Quarter-1) & Directorate!=16)$Service) /
+                                     sum(subset(countsDir, Time %in% (Quarter-4):(Quarter-1) & Directorate!=16)$Contacts, na.rm=TRUE)*100, 1)
             
             Subset.P$sumNA = apply(Subset.P[,c("Service", "Listening", "Communication", "Respect", "InvCare")],
                                    1, function(x) sum(!is.na(x), na.rm=TRUE))
@@ -1027,22 +1092,14 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
             
             Subset.P = Subset.P[Subset.P$TeamC %in% teamnames,]
             
-            myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydatafirst, Time==Quarter & Directorate==d)$Service),
-                    " responses. Of these ", table(factor(subset(mydatafirst, Time==Quarter&Directorate==d)$SU, levels=0:1))[2],
-                    " were from carers.</p>"))
+            myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydata, Time==Quarter)$Service),
+                    " responses. Of these ", as.numeric(table(factor(subset(mydata, Time==Quarter)$SU, levels=0:1))[2]),
+                    " were from carers.", ifelse(is.na(responseDir), "</p>", paste0("This is a response rate of ",
+                        responseDir, "%.", ifelse(is.na(responsePrevDir), "This compares with ",
+                        paste0("This compares with ", responsePrevDir, " % in the previous quarter and ")), responseYearDir,
+                        " % in the previous four quarters.</p>"))))
             
-            if(!999 %in% funcPlaceC){
-                
-                responseRateD = round(length(subset(mydatafirst, Time==Quarter & Directorate==d)$Service) /
-                                          sum(subset(counts, Time==Quarter & Directorate==d)$Contacts, na.rm=TRUE)*100, 1)
-                
-                if(!is.na(responseRateD))
-                    
-                    myCat(c("<p>This is a response rate of ", responseRateD, " %.</p>"))
-                
-            }
-            
-            SQpreviousdir = ifelse(sum(funcPlaceC %in% c(3, 8:12, 15))>0,
+            SQpreviousdir = ifelse(sum(d %in% c(3, 5, 8:12, 15))>0,
                                 round(mean(subset(mydatafirst, Time==Quarter-2 & Directorate==d)$Service, na.rm=TRUE)*20),
                                 round(mean(subset(mydatafirst, Time==Quarter-1 & Directorate==d)$Service, na.rm=TRUE)*20))
             
@@ -1053,18 +1110,37 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
                     round(mean(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1) & Directorate==d)$Service, na.rm=TRUE)*20),
                     "% in the previous four quarters.</p>"))
             
-            NPScheckdir = length(subset(mydata, Time==Quarter)$Promoter[!is.na(subset(mydata, Time==Quarter)$Promoter)]) >=50
+            NPScheckdir = length(subset(mydatafirst, Time==Quarter & Directorate==d)$Promoter[!is.na(subset(mydatafirst,
+                                                                    Time==Quarter & Directorate==d)$Promoter)]) >=50
+            
+            NPSpreviousdir = ifelse(sum(d %in% c(3, 5, 8:12, 15))>0,
+                                 round((sum(subset(mydatafirst, Time==Quarter-2 & Directorate==d)$Promoter == 5, na.rm=TRUE)/
+                                            sum(subset(mydatafirst, Time==Quarter-2 & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE) -
+                                            sum(subset(mydatafirst, Time==Quarter-2 & Directorate==d)$Promoter %in% 1:3, na.rm=TRUE)/
+                                            sum(subset(mydata, Time==Quarter-2 & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE))*100, 0),
+                                 round((sum(subset(mydatafirst, Time==Quarter-1 & Directorate==d)$Promoter == 5, na.rm=TRUE)/
+                                            sum(subset(mydatafirst, Time==Quarter-1 & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE) -
+                                            sum(subset(mydatafirst, Time==Quarter-1 & Directorate==d)$Promoter %in% 1:3, na.rm=TRUE)/
+                                            sum(subset(mydatafirst, Time==Quarter-1 & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE))*100, 0))
+            
+            NPSyeardir = round((sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1) & Directorate==d)$Promoter == 5, na.rm=TRUE)/
+                                 sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1) & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE) -
+                                 sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1) & Directorate==d)$Promoter %in% 1:3, na.rm=TRUE)/
+                                 sum(subset(mydatafirst, Time %in% (Quarter-4):(Quarter-1) & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE))*100, 0)
             
             if(NPScheckdir){
                 
-                npsDir = round((sum(subset(mydatafirst, Time==Quarter & Directorate==d)$Promoter == 5, na.rm=TRUE)/
-                                    sum(subset(mydatafirst, Time==Quarter & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE) -
-                                    sum(subset(mydatafirst, Time==Quarter & Directorate==d)$Promoter %in% 1:3, na.rm=TRUE)/
-                                    sum(subset(mydatafirst, Time==Quarter & Directorate==d)$Promoter %in% 1:5, na.rm=TRUE))*100, 0)
+                NPSdir = round((sum(Subset.P$Promoter == 5, na.rm=TRUE)/
+                                 sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE) -
+                                 sum(Subset.P$Promoter %in% 1:3, na.rm=TRUE)/
+                                 sum(Subset.P$Promoter %in% 1:5, na.rm=TRUE))*100, 0)
                 
-                if(!is.na(npsDir)){
+                if(!is.na(NPSdir)){
                     
-                    myCat(c("<p>Net promoter score was ", npsDir, ".</p>"))
+                    myCat(c("<p>Net promoter score was ", NPSdir, ifelse(is.na(NPSpreviousdir),
+                                        ". This compares with ", paste0(". This compares with ", NPSpreviousdir,
+                                        " in the previous quarter and ")), NPSyeardir,
+                            " in the previous four quarters.</p>"))
                     
                 }
                 
@@ -1327,9 +1403,6 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
 bigFunction(name = "Rampton hospital", funcPlaceC = 8:12, funcPlaceN = "Directorate",
             URL = "special_f", barType = "main", dirVec = c(8:12), funcLabels = mainlist)
 
-bigFunction(name = "Health partnerships", funcPlaceC = 2, funcPlaceN = "Local", URL = "hp", barType = "HP",
-            dirVec = c(25:31), funcLabels = CHPmain)
-
 bigFunction(name = "Offender health", funcPlaceC = 999, funcPlaceN = "Directorate",
             URL = "hmp", barType = "HMP", dirVec = c(16), funcLabels = offendermain)
 
@@ -1341,6 +1414,9 @@ bigFunction(name = "Local services", funcPlaceC = 0, funcPlaceN = "Local", URL =
 
 bigFunction(name = "Forensic services", funcPlaceC = 1, funcPlaceN = "Local", URL = "forensic",
             barType = "main", dirVec = c(3, 5, 15, 16), funcLabels = mainlist)
+
+bigFunction(name = "Health partnerships", funcPlaceC = 2, funcPlaceN = "Local", URL = "hp", barType = "HP",
+            dirVec = c(25:31), funcLabels = CHPmain)
 
 ### now the index
 
@@ -1376,7 +1452,8 @@ myCat('</div>')
 
 myCat('<div id="breadcrumb">')
 
-myCat('<a href="index.html">Index</a> &rsaquo; ')
+myCat('<a href="http://feedback.nottinghamshirehealthcare.nhs.uk" title="Back to main site">
+                Back to main site</a> &rsaquo;<a href="index.html">Index</a> &rsaquo; ')
 
 myCat('</div>')
 
@@ -1438,7 +1515,7 @@ for(d in c(3, 5, 15, 16)){
 if(file.exists(file.path(getwd(), "temp", "special_f.html",
                          fsep = .Platform$file.sep))){
     
-    myCat('<li><a href="special_f.html">Special services (Rampton) directorate</a><br></li>')
+    myCat('<li><a href="special_f.html">Rampton hospital</a><br></li>')
     
     myCat('<ol>')
     
@@ -1458,7 +1535,6 @@ if(file.exists(file.path(getwd(), "temp", "special_f.html",
 } # end does special_f.html exist
 
 myCat('</ol>')
-
 
 myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
 
