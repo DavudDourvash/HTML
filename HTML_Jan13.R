@@ -1,7 +1,7 @@
 
 rm(list=ls())
 
-setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\Patient_Survey\\",
+setwd(ifelse(Sys.info()['sysname']=="Windows", "C:\\Users\\Chris\\Dropbox\\R-files\\Patient_Survey\\",
              "~/Dropbox/R-files/Patient_Survey")) 
 
 exampletable=read.csv("Categories_comments.csv", stringsAsFactors = FALSE)
@@ -10,21 +10,21 @@ mydatafirst = read.csv("FINAL-DATA.csv", na.strings=c("NA", "", 99, 88), strings
 
 counts=read.csv("Counts.csv")
 
-setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\",
+setwd(ifelse(Sys.info()['sysname']=="Windows", "F:\\",
              "~/"))
 
 do.call(file.remove, list(list.files(file.path(getwd(), "temp/",
                                                fsep = .Platform$file.sep), full.names=TRUE)))
 
-file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\report.css",
+file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "C:\\Users\\Chris\\Dropbox\\R-files\\HTML\\report.css",
                            "~/Dropbox/R-files/HTML/report.css"),  fsep = .Platform$file.sep),
           file.path(getwd(), "temp/report.css",  fsep = .Platform$file.sep))
 
-file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "D:\\Dropbox\\R-files\\HTML\\logo.png",
+file.copy(file.path(ifelse(Sys.info()['sysname']=="Windows", "C:\\Users\\Chris\\Dropbox\\R-files\\HTML\\logo.png",
                            "~/Dropbox/R-files/HTML/logo.png"),  fsep = .Platform$file.sep),
           file.path(getwd(), "temp/logo.png",  fsep = .Platform$file.sep))
 
-setwd(ifelse(Sys.info()['sysname']=="Windows", "D:\\", "~/"))
+setwd(ifelse(Sys.info()['sysname']=="Windows", "F:\\", "~/"))
 
 counts=counts[!duplicated(counts[, c("TeamC", "Time")]),]
 
@@ -48,21 +48,22 @@ mydatafirst$Imp1[!mydatafirst$Imp1 %in% exampletable$Number] = NA
 
 mydatafirst$Best1[!mydatafirst$Best1 %in% exampletable$Number] = NA
 
-library(tm) 
+library(tm)
 library(wordcloud)
-require(RColorBrewer) 
+require(RColorBrewer)
 library(ggplot2) 
-library(reshape) 
+library(reshape)
 library(scales) 
 library(xtable)
 library(plyr)
 
 directorate=c("Adult mental health City", "Adult mental health", "Arnold Lodge",
               "Child and adolescent mental health services", "Low secure + community forensic services",
-              "Learning disability", "Mental health services for older people", "High secure LD", "High secure MH",
-              "High secure PD", "Peaks", "High secure women's","Substance misuse", "Psychological therapy", "Wathwood",
+              "Learning disability", "Mental health services for older people", "High secure learning disability",
+              "High secure mental health", "High secure PD", "Peaks", "High secure women's","Substance misuse",
+              "Psychological therapy", "Wathwood",
               "Offender health", rep(NA, 8), "Bassetlaw", "Mansfield and Ashfield", "Newark and Sherwood",
-              "Nottingham North and East", "Nottingham West", "Rushcliffe", "Specialist services") 
+              "Nottingham North and East", "Nottingham West", "Rushcliffe", "Specialist services", NA, "Sure start") 
 
 lappend <- function(lst, obj) {  
     
@@ -194,11 +195,11 @@ stack=function(PlaceN, PlaceC, myLabels, Trust = 0){
     print(  
         
         ggplot(mygraph, aes(L1, value, fill=factor(Var.1), order = -Var.1)) + geom_bar(position="fill", stat="identity") +
-            ylab("Proportion responding") + opts(axis.text.x=theme_text(angle=90, hjust=1)) + xlab("Question") +
+            ylab("Proportion responding") + theme(axis.text.x=element_text(angle=90, hjust=1)) + xlab("Question") +
             scale_fill_manual(values=rainbow(5), "Response", limits=c(1:5), breaks=c(5:1),
                               labels=c("Excellent", "Good", "Fair", "Poor", "Very poor")) +
             scale_y_continuous(labels =percent_format()) + guides(fill = guide_legend(reverse = TRUE)) +
-            scale_x_discrete(labels=myLabels[missnum>2]) 
+            scale_x_discrete(labels=myLabels[missnum>2])
     )
     
     dev.off()
@@ -274,7 +275,10 @@ mycloud=function(PlaceN, PlaceC, type, cloudname){
     
     mydata=mydatafirst[mydatafirst[,PlaceN] %in% PlaceC & mydatafirst$Time %in% (Quarter-3):Quarter,]
     
-    pal <- brewer.pal(8,"Dark2")
+#    pal <- brewer.pal(8,"Dark2")
+    
+    pal <- brewer.pal(6,"Dark2")
+    pal <- pal[-(1)]
     
     graph <<- graph + 1
     
@@ -306,14 +310,15 @@ mycloud=function(PlaceN, PlaceC, type, cloudname){
         
         mycorpus <- tm_map(mycorpus, removePunctuation) 
         mycorpus <- tm_map(mycorpus, tolower) 
-        mycorpus <- tm_map(mycorpus, function(m) removeWords(m, c(stopwords("english"), "none", "rampton", "ive", "dont", "etc"))) 
+        mycorpus <- tm_map(mycorpus, function(m) removeWords(m, c(stopwords("english"), "none", "rampton", "ive", "dont", "etc",
+                                                                  "nothing"))) 
         
         tdm <- TermDocumentMatrix(mycorpus) 
         m <- as.matrix(tdm) 
         v <- sort(rowSums(m),decreasing=TRUE) 
         d <- data.frame(word = names(v),freq=v) 
         
-        wordcloud(d$word,d$freq, scale=c(2.5,.5), max.words=250, random.order=TRUE,rot.per=.15,
+        wordcloud(d$word,d$freq, scale=c(2.5,.5), max.words=100, random.order=FALSE, rot.per=.15,
                   colors=pal, vfont=c("sans serif","plain")) 
         
         mtext(paste(cloudname, "-", ifelse(type=="Improve", "Improve one thing", "Best thing")), side=3, line=0, outer=FALSE) 
@@ -407,23 +412,23 @@ mytable=function(PlaceN, PlaceC, x){
     
     for (i in 1:length(sumtable)) {  
         
-        finaltable$Sumcategory[finaltable$Super==names(sumtable[i])]=sumtable[i]  
+        finaltable$Sumcategory[finaltable$Super==names(sumtable[i])] = sumtable[i]  
         
     }  
     
     for (i in 1:length(sumtable)) {  
         
-        finaltable$lastcategory[finaltable$Super==names(sumtable[i])]=sumlast[i]  
+        finaltable$lastcategory[finaltable$Super==names(sumtable[i])] = sumlast[i]  
         
     }  
     
-    finaltable2=finaltable[with(finaltable, order(-Sumcategory, -as.numeric(resultstable))),]  
+    finaltable2 = finaltable[with(finaltable, order(-Sumcategory, -as.numeric(resultstable))),]  
     
     realtable=matrix(data=NA, nrow=0, ncol=7) 
     
     for (i in unique(finaltable2[,2])){
         
-        realtable=rbind(realtable, matrix(c(NA, i, "Total", NA, NA, finaltable2[head(which(finaltable2[2]==i), 1),6],
+        realtable=rbind(realtable, matrix(c(NA, i, "Total", NA, NA, finaltable2[head(which(finaltable2[2]==i), 1), 6],
                                             finaltable2[head(which(finaltable2[2]==i), 1),7]), nrow=1))  
         
         realtable=rbind(realtable, as.matrix(finaltable2[which(finaltable2[2]==i),]))
@@ -432,7 +437,7 @@ mytable=function(PlaceN, PlaceC, x){
     
     temptable=realtable[,c(2,3,6,4,7,5)]
     
-    tempvec=as.numeric(as.character(temptable[,4]))>0 
+    tempvec=as.numeric(as.character(temptable[,4]))>0 | as.numeric(as.character(temptable[,6]))>0
     
     tempvec[is.na(tempvec)]=TRUE 
     
@@ -757,13 +762,7 @@ myCat('<ol>')
 
 myCat('<li><a href="local.html">Local services</a><br></li>')
 
-myCat('<li><a href="special_local.html">Specialist services directorate</a><br></li>')
-
 myCat('<li><a href="forensic.html">Forensic services</a><br></li>')
-
-check1 = stack(PlaceN = "Directorate", PlaceC = 8:12, myLabels = mainlist)
-
-if(check1) myCat('<li><a href="special_f.html">Special services (Rampton) directorate</a><br></li>')
 
 myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
 
@@ -868,8 +867,9 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
         
         myCat(c("<p>In ", name, " we received ", length(subset(mydata, Time==Quarter)$Service),
                 " responses. Of these ", as.numeric(table(factor(subset(mydata, Time==Quarter)$SU, levels=0:1))[2]),
-                " were from carers.", ifelse(is.na(responseRate), "</p>", paste0("This is a response rate of ",
-                         responseRate, "%.", ifelse(is.na(responsePrev), " This compares with ",
+                " were from carers.", ifelse(is.na(responseRate) | is.infinite(responseRate), "</p>",
+                                             paste0("This is a response rate of ", responseRate, "%.",
+                                                    ifelse(is.na(responsePrev), " This compares with ",
                                                     paste0("This compares with ", responsePrev,
                          " % in the previous quarter and ")), responseYear,
                          " % in the previous four quarters.</p>"))))
@@ -963,6 +963,20 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
         myCat('<h3>Navigation</h3>')
         
         myCat('<ul>')
+        
+        if(funcPlaceC == 0){
+            
+            myCat('<li><a href="special_local.html">Specialist services directorate</a><br></li>')
+            
+        }
+        
+        if(funcPlaceC == 1){
+            
+            check1 = stack(PlaceN = "Directorate", PlaceC = 8:12, myLabels = mainlist)
+            
+            if(check1) myCat('<li><a href="special_f.html">Rampton hospital</a><br></li>')
+            
+        }
         
         for (d in dirVec) {
             
@@ -1094,7 +1108,7 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
             
             myCat(c("<p>In ", directorate[d], " we received ", length(subset(mydata, Time==Quarter)$Service),
                     " responses. Of these ", as.numeric(table(factor(subset(mydata, Time==Quarter)$SU, levels=0:1))[2]),
-                    " were from carers.", ifelse(is.na(responseDir), "</p>", paste0("This is a response rate of ",
+                    " were from carers.", ifelse(is.na(responseDir) | is.infinite(responseDir), "</p>", paste0("This is a response rate of ",
                         responseDir, "%.", ifelse(is.na(responsePrevDir), "This compares with ",
                         paste0("This compares with ", responsePrevDir, " % in the previous quarter and ")), responseYearDir,
                         " % in the previous four quarters.</p>"))))
@@ -1400,6 +1414,9 @@ bigFunction = function(name, funcPlaceC, funcPlaceN, URL, barType, dirVec, funcL
     
 } # matches with bigFunction
 
+bigFunction(name = "Health partnerships", funcPlaceC = 2, funcPlaceN = "Local", URL = "hp", barType = "HP",
+            dirVec = c(25:33), funcLabels = CHPmain)
+
 bigFunction(name = "Rampton hospital", funcPlaceC = 8:12, funcPlaceN = "Directorate",
             URL = "special_f", barType = "main", dirVec = c(8:12), funcLabels = mainlist)
 
@@ -1410,13 +1427,10 @@ bigFunction(name = "Specialist services (local)", funcPlaceC = c(4, 6, 13, 14), 
             URL = "special_local", barType = "main", dirVec = c(4, 6, 13, 14), funcLabels=mainlist)
 
 bigFunction(name = "Local services", funcPlaceC = 0, funcPlaceN = "Local", URL = "local", barType = "main",
-            dirVec = c(2,7), funcLabels = mainlist)
+            dirVec = c(2,7, 4, 6, 13, 14), funcLabels = mainlist)
 
 bigFunction(name = "Forensic services", funcPlaceC = 1, funcPlaceN = "Local", URL = "forensic",
             barType = "main", dirVec = c(3, 5, 15, 16), funcLabels = mainlist)
-
-bigFunction(name = "Health partnerships", funcPlaceC = 2, funcPlaceN = "Local", URL = "hp", barType = "HP",
-            dirVec = c(25:31), funcLabels = CHPmain)
 
 ### now the index
 
@@ -1540,7 +1554,7 @@ myCat('<li><a href="hp.html">Health partnerships</a><br></li>')
 
 myCat('<ol>')
 
-for(d in 25:31){
+for(d in 25:33){
     
     if(file.exists(file.path(getwd(), "temp", paste0(gsub("\\s","_", tolower(directorate[d])), ".html"),
                              fsep = .Platform$file.sep))){
